@@ -78,7 +78,7 @@ function renderSavedEvents(){
     const menu=(event.menu||[]).filter(item=>Number(item.quantity)>0).map(item=>{const pizza=state.pizzas.find(p=>p.id===item.pizza_id);return pizza?escapeHtml(pizza.name)+' ×'+item.quantity:null;}).filter(Boolean);
     const date=event.event_date?formatDate(event.event_date):'Data da definire';
     const guests=Number(event.guest_count)||4;
-    return '<article class="saved-event-row '+(event.id===state.activeEventId?'active':'')+'"><div class="saved-event-copy"><strong>'+escapeHtml(date)+'</strong><small>'+guests+' '+(guests===1?'ospite':'ospiti')+' · '+(menu.length?menu.join(' · '):'Nessuna pizza selezionata')+'</small></div><button class="event-open-button" data-open-event="'+escapeHtml(event.id)+'">'+(event.id===state.activeEventId?'In modifica':'Apri')+'</button></article>';
+    return '<article class="saved-event-row '+(event.id===state.activeEventId?'active':'')+'"><div class="saved-event-copy"><strong>'+escapeHtml(date)+'</strong><small>'+guests+' '+(guests===1?'ospite':'ospiti')+' · '+(menu.length?menu.join(' · '):'Nessuna pizza selezionata')+'</small></div><div class="event-row-actions"><button class="event-open-button" data-open-event="'+escapeHtml(event.id)+'">'+(event.id===state.activeEventId?'In modifica':'Apri')+'</button><button class="event-delete-button" data-delete-event="'+escapeHtml(event.id)+'" title="Elimina serata" aria-label="Elimina serata del '+escapeHtml(date)+'">Elimina</button></div></article>';
   }).join(''):'<div class="saved-events-empty">Le serate che salvi appariranno qui, con la data e le pizze scelte.</div>';
 }
 function openSavedEvent(eventId){
@@ -91,6 +91,27 @@ function openSavedEvent(eventId){
 function startNewEvent(){
   state.activeEventId=null;state.eventDate='';state.guests=4;state.checked=[];state.pizzas.forEach(pizza=>pizza.count=0);
   saveLocal();showToast('Nuova serata pronta da organizzare.');
+}
+async function deleteSavedEvent(eventId){
+  const event=state.events.find(item=>item.id===eventId);if(!event)return;
+  const date=event.event_date?formatDate(event.event_date):'senza data';
+  if(!confirm('Eliminare la serata del '+date+'? La cancellazione non si può annullare.'))return;
+  const userId=currentUser?.id;if(!userId){showToast('Accedi per eliminare una serata.');return;}
+  setCloudStatus('Eliminazione serata…');
+  cloudSyncChain=cloudSyncChain.catch(()=>{}).then(async()=>{
+    const result=await supabaseClient.from('pizza_events').delete().eq('user_id',userId).eq('id',eventId);
+    requireCloud(result);
+  });
+  try{
+    await cloudSyncChain;
+    state.events=state.events.filter(item=>item.id!==eventId);
+    if(state.activeEventId===eventId){state.activeEventId=null;state.eventDate='';state.guests=4;state.checked=[];state.pizzas.forEach(pizza=>pizza.count=0);}
+    saveLocal();if(currentUser?.id===userId)setCloudStatus('Sincronizzato su Supabase');
+    showToast('Serata eliminata.');
+  }catch(error){
+    console.error('Forno di casa delete event:',error);
+    if(currentUser?.id===userId){setCloudStatus('Eliminazione non riuscita');showToast('Non riesco a eliminare la serata. Riprova tra poco.');}
+  }
 }
 async function saveCurrentEvent(){
   const menu=currentMenu();
@@ -247,6 +268,7 @@ document.addEventListener('click',event=>{
   if(event.target.closest('#calendar-clear')){state.eventDate='';save();$('#calendar-dialog').close();return;}
   if(event.target.closest('#save-event-btn')){saveCurrentEvent();return;}
   if(event.target.closest('#new-event-btn')){startNewEvent();return;}
+  const deleteEvent=event.target.closest('[data-delete-event]');if(deleteEvent){deleteSavedEvent(deleteEvent.dataset.deleteEvent);return;}
   const openEvent=event.target.closest('[data-open-event]');if(openEvent){openSavedEvent(openEvent.dataset.openEvent);return;}
   const day=event.target.closest('[data-calendar-date]');if(day){state.eventDate=day.dataset.calendarDate;save();$('#calendar-dialog').close();return;}
   const close=event.target.closest('[data-close]');if(close){close.closest('dialog').close();return;}
