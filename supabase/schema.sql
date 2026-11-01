@@ -41,7 +41,7 @@ create table if not exists public.pizza_events (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   primary key (user_id, id),
-  unique (user_id)
+  -- Una persona può pianificare più serate; user_id/id resta la chiave primaria.
 );
 
 create table if not exists public.event_pizzas (
