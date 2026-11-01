@@ -21,7 +21,7 @@ const seed = {
 let state;
 try { state = JSON.parse(localStorage.getItem(STORAGE_KEY)) || structuredClone(seed); } catch { state = structuredClone(seed); }
 state.pizzas ||= []; state.ingredients ||= []; state.checked ||= [];
-let currentFilter = 'tutte'; let toastTimer;
+let currentFilter = 'tutte'; let toastTimer; let authMode='signin';
 let supabaseClient = null; let currentUser = null; let loadedUserId = null; let cloudSyncTimer; let realtimeReloadTimer; let realtimeChannel = null; let cloudSyncChain = Promise.resolve();
 const $ = (selector, root=document) => root.querySelector(selector);
 const $$ = (selector, root=document) => [...root.querySelectorAll(selector)];
@@ -136,7 +136,7 @@ async function initializeCloud(){
   const config=window.FORNO_SUPABASE;
   if(!window.supabase?.createClient||!config?.url||!config?.publishableKey){$('#auth-message').textContent='Collegamento Supabase non configurato.';$('#auth-message').classList.add('error');return;}
   supabaseClient=window.supabase.createClient(config.url,config.publishableKey);
-  supabaseClient.auth.onAuthStateChange((_event,session)=>{setTimeout(()=>handleAuthSession(session),0);});
+  supabaseClient.auth.onAuthStateChange((event,session)=>{setTimeout(()=>{handleAuthSession(session);if(event==='PASSWORD_RECOVERY')$('#password-reset-dialog').showModal();},0);});
   const {data,error}=await supabaseClient.auth.getSession();if(error){$('#auth-message').textContent='Non riesco a verificare l’accesso. Ricarica la pagina.';$('#auth-message').classList.add('error');return;}await handleAuthSession(data.session);
 }
 
@@ -161,12 +161,56 @@ $('#pizza-filters').addEventListener('click',event=>{const chip=event.target.clo
 $('#pizza-search').addEventListener('input',render);$('#catalog-search').addEventListener('input',render);
 $('#pizza-form').addEventListener('submit',event=>{event.preventDefault();const name=$('#pizza-name').value.trim();if(!name)return;const selected=$$('input[name="pizza-ingredients"]:checked').map(input=>input.value);state.pizzas.push({id:`pizza-${crypto.randomUUID()}`,name,type:$('input[name="pizza-type"]:checked').value,ingredients:selected,count:0});$('#pizza-dialog').close();save();showToast('La nuova pizza è nel tuo ricettario!');});
 $('#ingredient-form').addEventListener('submit',event=>{event.preventDefault();const name=$('#ingredient-name').value.trim();if(!name)return;const duplicate=state.ingredients.some(item=>item.name.toLocaleLowerCase('it')===name.toLocaleLowerCase('it'));if(duplicate){showToast('Questo ingrediente è già in dispensa.');return;}state.ingredients.push({id:`ing-${crypto.randomUUID()}`,name,unit:$('#ingredient-unit').value});$('#ingredient-dialog').close();save();showToast('Ingrediente aggiunto alla dispensa!');});
+function setAuthMessage(message,type=''){const el=$('#auth-message');el.textContent=message;el.className='auth-message'+(type?' '+type:'');}
+$('#auth-toggle').addEventListener('click',()=>{
+  authMode=authMode==='signin'?'signup':'signin';
+  const signup=authMode==='signup';
+  $('#auth-submit').innerHTML=signup?'Crea account <span>↗</span>':'Accedi <span>↗</span>';
+  $('#auth-password').autocomplete=signup?'new-password':'current-password';
+  $('#auth-toggle').textContent=signup?'Hai già un account? Accedi':'Crea un account';
+  $('#auth-forgot').hidden=signup;
+  setAuthMessage(signup?'Crea il tuo account con email e password. Dopo la registrazione, conferma l’indirizzo dalla tua email.':'Usa lo stesso account per accedere da computer e telefono.');
+});
+$('#auth-forgot').addEventListener('click',async()=>{
+  const email=$('#auth-email').value.trim();
+  if(!email){$('#auth-email').focus();setAuthMessage('Inserisci la tua email e riprova.','error');return;}
+  const button=$('#auth-forgot');button.disabled=true;setAuthMessage('Invio della richiesta…');
+  try{
+    const {error}=await supabaseClient.auth.resetPasswordForEmail(email,{redirectTo:`${location.origin}${location.pathname}`});
+    if(error)throw error;
+    setAuthMessage('Se l’indirizzo è associato a un account, riceverai un link per impostare la password.','success');
+  }catch(error){console.error('Forno di casa password reset:',error);setAuthMessage('Invio non riuscito. Controlla la connessione e riprova.','error');}
+  finally{button.disabled=false;}
+});
 $('#auth-form').addEventListener('submit',async event=>{
-  event.preventDefault();const message=$('#auth-message');const email=$('#auth-email').value.trim();const button=$('#auth-send');
-  if(location.protocol==='file:'){message.textContent='Apri l’app da http://localhost:3000 per collegare l’accesso cloud.';message.className='auth-message error';return;}
-  button.disabled=true;message.className='auth-message';message.textContent='Invio del link…';
-  try{const {error}=await supabaseClient.auth.signInWithOtp({email,options:{emailRedirectTo:`${location.origin}${location.pathname}`,shouldCreateUser:true}});if(error)throw error;message.textContent='Link inviato. Apri la tua email sullo stesso dispositivo per accedere.';message.className='auth-message success';}
-  catch(error){console.error('Forno di casa auth:',error);message.textContent='Invio non riuscito. Controlla l’indirizzo e riprova.';message.className='auth-message error';}
+  event.preventDefault();const email=$('#auth-email').value.trim();const password=$('#auth-password').value;const button=$('#auth-submit');
+  if(location.protocol==='file:'){setAuthMessage('Apri l’app dal sito pubblicato o da http://localhost:3000.','error');return;}
+  button.disabled=true;$('#auth-toggle').disabled=true;$('#auth-forgot').disabled=true;setAuthMessage(authMode==='signup'?'Creazione account…':'Accesso…');
+  try{
+    if(authMode==='signup'){
+      const {data,error}=await supabaseClient.auth.signUp({email,password,options:{emailRedirectTo:`${location.origin}${location.pathname}`}});
+      if(error)throw error;
+      if(data.session){await handleAuthSession(data.session);}
+      else{setAuthMessage('Account creato. Controlla la tua email per confermare l’indirizzo, poi accedi.','success');authMode='signin';$('#auth-submit').innerHTML='Accedi <span>↗</span>';$('#auth-toggle').textContent='Crea un account';$('#auth-forgot').hidden=false;$('#auth-password').autocomplete='current-password';}
+    }else{
+      const {error}=await supabaseClient.auth.signInWithPassword({email,password});
+      if(error)throw error;
+    }
+  }catch(error){
+    console.error('Forno di casa auth:',error);
+    setAuthMessage(authMode==='signup'?(error.message||'Creazione account non riuscita. Controlla i dati e riprova.'):'Email o password non corretti. Se avevi già usato il link email, scegli “Password dimenticata?”.','error');
+  }finally{button.disabled=false;$('#auth-toggle').disabled=false;$('#auth-forgot').disabled=false;}
+});
+$('#password-reset-form').addEventListener('submit',async event=>{
+  event.preventDefault();const password=$('#reset-password').value;const confirmPassword=$('#reset-password-confirm').value;const message=$('#password-reset-message');
+  message.className='auth-message';message.textContent='';
+  if(password!==confirmPassword){message.classList.add('error');message.textContent='Le password non coincidono.';return;}
+  const button=$('#password-reset-form button[type="submit"]');button.disabled=true;
+  try{
+    const {error}=await supabaseClient.auth.updateUser({password});
+    if(error)throw error;
+    $('#password-reset-dialog').close();$('#password-reset-form').reset();showToast('Password aggiornata.');authMode='signin';
+  }catch(error){console.error('Forno di casa password update:',error);message.className='auth-message error';message.textContent='Non riesco ad aggiornare la password. Richiedi un nuovo link e riprova.';}
   finally{button.disabled=false;}
 });
 $('#signout-btn').addEventListener('click',async()=>{if(!supabaseClient)return;const {error}=await supabaseClient.auth.signOut();if(error)showToast('Non riesco a completare la disconnessione.');});
