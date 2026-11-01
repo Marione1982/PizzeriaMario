@@ -3,10 +3,10 @@ const seed = {
   eventDate: '', guests: 4,
   ingredients: [
     {id:'ing-1',name:'Mozzarella fiordilatte',unit:'pz'}, {id:'ing-2',name:'Pomodoro San Marzano',unit:'pz'},
-    {id:'ing-3',name:'Basilico fresco',unit:'pz'}, {id:'ing-4',name:'Olio extravergine',unit:'qb'},
-    {id:'ing-5',name:'Parmigiano Reggiano',unit:'g'}, {id:'ing-6',name:'Prosciutto cotto',unit:'pz'},
+    {id:'ing-3',name:'Basilico fresco',unit:'pz'}, {id:'ing-4',name:'Olio extravergine',unit:'pz'},
+    {id:'ing-5',name:'Parmigiano Reggiano',unit:'pz'}, {id:'ing-6',name:'Prosciutto cotto',unit:'pz'},
     {id:'ing-7',name:'Funghi champignon',unit:'pz'}, {id:'ing-8',name:'Olive nere',unit:'pz'},
-    {id:'ing-9',name:'Salame piccante',unit:'pz'}, {id:'ing-10',name:'Gorgonzola',unit:'g'},
+    {id:'ing-9',name:'Salame piccante',unit:'pz'}, {id:'ing-10',name:'Gorgonzola',unit:'pz'},
     {id:'ing-11',name:'Rucola',unit:'pz'}, {id:'ing-12',name:'Pomodorini',unit:'pz'}
   ],
   pizzas: [
@@ -35,14 +35,15 @@ function getMenuItems(){
 }
 function getShopping(){
   const totals=new Map();
-  [...state.pizzas,...state.specials].filter(item=>item.count>0).forEach(item=>item.ingredients.forEach(id=>{
-    const ingredient=ingredientById(id); if(!ingredient)return;
-    const current=totals.get(id)||{name:ingredient.name,unit:ingredient.unit,quantity:0};
-    current.quantity+=item.count; totals.set(id,current);
+  const addRecipes=(recipes,countKey)=>recipes.filter(item=>item.count>0).forEach(item=>item.ingredients.forEach(id=>{
+    const ingredient=ingredientById(id);if(!ingredient)return;
+    const current=totals.get(id)||{name:ingredient.name,unit:ingredient.unit,quantity:0,pizzaCount:0,preparationCount:0};
+    current.quantity+=item.count;current[countKey]+=item.count;totals.set(id,current);
   }));
+  addRecipes(state.pizzas,'pizzaCount');addRecipes(state.specials,'preparationCount');
   return [...totals.entries()].sort((a,b)=>a[1].name.localeCompare(b[1].name,'it')).map(([id,item])=>({id,...item}));
 }
-function quantityLabel(item){if(item.unit==='qb')return item.quantity===1?'q.b. × 1 preparazione':`q.b. × ${item.quantity} preparazioni`;const unitShort={pz:'',g:' g',ml:' ml'}[item.unit]??` ${item.unit}`;return `× ${item.quantity}${unitShort}`;}
+function quantityLabel(item){if(item.unit==='pz'){const forItems=[];if(item.pizzaCount)forItems.push(`${item.pizzaCount} ${item.pizzaCount===1?'pizza':'pizze'}`);if(item.preparationCount)forItems.push(`${item.preparationCount} ${item.preparationCount===1?'preparazione':'preparazioni'}`);return `× ${item.quantity} ${item.quantity===1?'pezzo':'pezzi'} · per ${forItems.join(' + ')}`;}if(item.unit==='qb')return item.quantity===1?'q.b. × 1 preparazione':`q.b. × ${item.quantity} preparazioni`;const unitShort={g:' g',ml:' ml'}[item.unit]??` ${item.unit}`;return `× ${item.quantity}${unitShort}`;}
 function formatDate(value){if(!value)return 'La tua prossima serata';const d=new Date(`${value}T12:00:00`);return new Intl.DateTimeFormat('it-IT',{day:'numeric',month:'long',year:'numeric'}).format(d);}
 function pizzaCard(pizza,showQuantity=false){
   const names=pizza.ingredients.map(id=>ingredientById(id)?.name).filter(Boolean);
