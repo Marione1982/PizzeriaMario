@@ -61,7 +61,7 @@ function render(){
   $('#shop-date').textContent=formatDate(state.eventDate);$('#shop-guests').textContent=`${state.guests||4} ${(state.guests||4)===1?'persona':'persone'} a tavola`;
   const homeQuery=$('#pizza-search').value.trim().toLocaleLowerCase('it');
   const selectedType=({rosse:'rossa',bianche:'bianca'})[currentFilter];
-  const homePizzas=state.pizzas.filter(p=> (!selectedType||p.type===selectedType)&&p.name.toLocaleLowerCase('it').includes(homeQuery));
+  const homePizzas=state.pizzas.filter(p=> (!selectedType||p.type===selectedType)&&p.name.toLocaleLowerCase('it').includes(homeQuery)).sort((a,b)=>a.name.localeCompare(b.name,'it',{sensitivity:'base'}));
   $('#pizza-grid').innerHTML=homePizzas.length?homePizzas.map(p=>pizzaCard(p,true)).join():'<div class="empty-filter">Nessuna pizza trovata con questi filtri.</div>';
   $('#special-order-grid').innerHTML=state.specials.map(special=>specialCard(special,true)).join()||'<div class="empty-filter">Aggiungi una preparazione in “Le speciali” per inserirla nella serata.</div>';
   const catalogQuery=$('#catalog-search').value.trim().toLocaleLowerCase('it');const catalogPizzas=state.pizzas.filter(p=>p.name.toLocaleLowerCase('it').includes(catalogQuery));
