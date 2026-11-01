@@ -16,7 +16,7 @@ L'accesso usa link email monouso. Se Supabase rifiuta il redirect, aggiungi `htt
 
 ## GitHub
 
-Repository di destinazione: [`Marione1982/PizzeriaMario`](https://github.com/Marione1982/PizzeriaMario). Il push del codice è in attesa che l'integrazione GitHub disponga dell'autorizzazione a scrivere i contenuti.
+Repository del progetto: [`Marione1982/PizzeriaMario`](https://github.com/Marione1982/PizzeriaMario).
 
 ## Contenuti
 
