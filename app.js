@@ -21,7 +21,7 @@ const seed = {
 let state;
 try { state = JSON.parse(localStorage.getItem(STORAGE_KEY)) || structuredClone(seed); } catch { state = structuredClone(seed); }
 state.pizzas ||= []; state.ingredients ||= []; state.checked ||= [];
-let currentFilter = 'tutte'; let toastTimer; let authMode='signin';
+let currentFilter = 'tutte'; let toastTimer; let editingPizzaId=null; let editingIngredientId=null; let calendarViewDate=new Date(); let authMode='signin';
 let supabaseClient = null; let currentUser = null; let loadedUserId = null; let cloudSyncTimer; let realtimeReloadTimer; let realtimeChannel = null; let cloudSyncChain = Promise.resolve();
 const $ = (selector, root=document) => root.querySelector(selector);
 const $$ = (selector, root=document) => [...root.querySelectorAll(selector)];
@@ -42,10 +42,11 @@ function quantityLabel(item){if(item.unit==='qb')return item.quantity===1?'q.b. 
 function formatDate(value){if(!value)return 'La tua prossima serata';const d=new Date(`${value}T12:00:00`);return new Intl.DateTimeFormat('it-IT',{day:'numeric',month:'long',year:'numeric'}).format(d);}
 function pizzaCard(pizza,showQuantity=false){
   const names=pizza.ingredients.map(id=>ingredientById(id)?.name).filter(Boolean);
-  return `<article class="pizza-card" data-pizza-card="${escapeHtml(pizza.id)}"><div class="card-top"><div><h3 class="pizza-name">${escapeHtml(pizza.name)}</h3><span class="pizza-kind"><i class="kind-dot ${pizza.type==='bianca'?'white':''}"></i>${pizza.type}</span></div>${showQuantity?'':`<button class="card-menu" title="Elimina ${escapeHtml(pizza.name)}" data-delete-pizza="${escapeHtml(pizza.id)}">×</button>`}</div><p class="pizza-ingredients">${names.length?names.map(escapeHtml).join(' · '):'Nessun ingrediente selezionato'}</p><div class="card-bottom"><span class="portion-label">${showQuantity?'NEL MENU':'RICETTA'}</span>${showQuantity?`<div class="quantity-control"><button aria-label="Riduci ${escapeHtml(pizza.name)}" data-quantity="${escapeHtml(pizza.id)}" data-step="-1">−</button><span class="quantity">${pizza.count}</span><button aria-label="Aggiungi ${escapeHtml(pizza.name)}" data-quantity="${escapeHtml(pizza.id)}" data-step="1">+</button></div>`:`<span class="portion-label">${names.length} ${names.length===1?'ingrediente':'ingredienti'}</span>`}</div></article>`;
+  const actions=showQuantity?'':`<div class="card-actions"><button class="card-menu edit-pizza" title="Modifica ${escapeHtml(pizza.name)}" aria-label="Modifica ${escapeHtml(pizza.name)}" data-edit-pizza="${escapeHtml(pizza.id)}">✎</button><button class="card-menu" title="Elimina ${escapeHtml(pizza.name)}" aria-label="Elimina ${escapeHtml(pizza.name)}" data-delete-pizza="${escapeHtml(pizza.id)}">×</button></div>`;
+  return `<article class="pizza-card" data-pizza-card="${escapeHtml(pizza.id)}"><div class="card-top"><div><h3 class="pizza-name">${escapeHtml(pizza.name)}</h3><span class="pizza-kind"><i class="kind-dot ${pizza.type==='bianca'?'white':''}"></i>${pizza.type}</span></div>${actions}</div><p class="pizza-ingredients">${names.length?names.map(escapeHtml).join(' · '):'Nessun ingrediente selezionato'}</p><div class="card-bottom"><span class="portion-label">${showQuantity?'NEL MENU':'RICETTA'}</span>${showQuantity?`<div class="quantity-control"><button aria-label="Riduci ${escapeHtml(pizza.name)}" data-quantity="${escapeHtml(pizza.id)}" data-step="-1">−</button><span class="quantity">${pizza.count}</span><button aria-label="Aggiungi ${escapeHtml(pizza.name)}" data-quantity="${escapeHtml(pizza.id)}" data-step="1">+</button></div>`:`<span class="portion-label">${names.length} ${names.length===1?'ingrediente':'ingredienti'}</span>`}</div></article>`;
 }
 function render(){
-  $('#event-date').value=state.eventDate||'';$('#guests').value=state.guests||4;
+  $('#event-date').value=state.eventDate||'';$('#event-date-label').textContent=state.eventDate?formatDate(state.eventDate):'Seleziona una data';$('#guests').value=state.guests||4;
   $('#pizza-count').textContent=state.pizzas.length;$('#all-count').textContent=state.pizzas.length;
   $('#shop-date').textContent=formatDate(state.eventDate);$('#shop-guests').textContent=`${state.guests||4} ${(state.guests||4)===1?'persona':'persone'} a tavola`;
   const homeQuery=$('#pizza-search').value.trim().toLocaleLowerCase('it');
@@ -55,14 +56,53 @@ function render(){
   const catalogQuery=$('#catalog-search').value.trim().toLocaleLowerCase('it');const catalogPizzas=state.pizzas.filter(p=>p.name.toLocaleLowerCase('it').includes(catalogQuery));
   $('#catalog-grid').innerHTML=catalogPizzas.length?catalogPizzas.map(p=>pizzaCard(p,false)).join():'<div class="empty-catalog"><strong>Il ricettario ti aspetta.</strong><p>Aggiungi la tua prima pizza e componi un menu tutto tuo.</p><button class="primary-button" id="empty-new-pizza">＋ Aggiungi una pizza</button></div>';
   $('#catalog-summary').textContent=`${state.pizzas.length} ${state.pizzas.length===1?'ricetta':'ricette'} nel ricettario`;
-  $('#ingredient-list').innerHTML=state.ingredients.map(item=>`<div class="ingredient-row"><span class="ingredient-symbol">✳</span><div class="ingredient-detail"><strong>${escapeHtml(item.name)}</strong><small>Quantità per pizza · ${labelUnit(item.unit)}</small></div><button class="delete-ingredient" data-delete-ingredient="${escapeHtml(item.id)}" title="Rimuovi ${escapeHtml(item.name)}">×</button></div>`).join('')||'<div class="empty-catalog"><strong>La dispensa è vuota.</strong><p>Aggiungi gli ingredienti che ami usare.</p></div>';
+  $('#ingredient-list').innerHTML=state.ingredients.map(item=>`<div class="ingredient-row"><span class="ingredient-symbol">✳</span><div class="ingredient-detail"><strong>${escapeHtml(item.name)}</strong><small>Unità di misura · ${labelUnit(item.unit)}</small></div><button class="edit-ingredient" data-edit-ingredient="${escapeHtml(item.id)}" aria-label="Modifica ${escapeHtml(item.name)}" title="Modifica ingrediente">✎</button><button class="delete-ingredient" data-delete-ingredient="${escapeHtml(item.id)}" title="Rimuovi ${escapeHtml(item.name)}" aria-label="Rimuovi ${escapeHtml(item.name)}">×</button></div>`).join('')||'<div class="empty-catalog"><strong>La dispensa è vuota.</strong><p>Aggiungi gli ingredienti che ami usare.</p></div>';
   const list=getShopping();$('#shopping-count').textContent=list.length;$('#shopping-total').innerHTML=`${list.length} <small>${list.length===1?'voce':'voci'}</small>`;
   $('#shopping-empty').hidden=list.length>0;$('#shopping-list').innerHTML=list.map(item=>`<div class="shopping-item ${state.checked.includes(item.id)?'checked':''}"><input class="shopping-check" type="checkbox" data-check="${escapeHtml(item.id)}" ${state.checked.includes(item.id)?'checked':''} aria-label="Segna ${escapeHtml(item.name)} come preso" /><label>${escapeHtml(item.name)}</label><span class="shopping-qty">${quantityLabel(item)}</span></div>`).join('');
   $('#copy-list-btn').disabled=list.length===0;
 }
 function showToast(message){const toast=$('#toast');toast.textContent=message;toast.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove('show'),2200);}
 function navigate(view){$$('.view').forEach(el=>el.classList.toggle('active',el.id===`view-${view}`));$$('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.view===view));$('#crumb-current').textContent=({serata:'LA SERATA',pizze:'LE PIZZE',ingredienti:'INGREDIENTI'})[view];window.scrollTo({top:0,behavior:'smooth'});}
-function openPizzaDialog(){if(!state.ingredients.length){showToast('Aggiungi prima qualche ingrediente alla dispensa.');navigate('ingredienti');return;}$('#pizza-form').reset();$('#pizza-ingredient-options').innerHTML=state.ingredients.map(item=>`<label class="ingredient-check"><input type="checkbox" name="pizza-ingredients" value="${escapeHtml(item.id)}" /><span>${escapeHtml(item.name)}</span><small>${labelUnit(item.unit)}</small></label>`).join('');$('#pizza-dialog').showModal();}
+function openPizzaDialog(pizzaId=null){
+  const pizza=pizzaId?state.pizzas.find(item=>item.id===pizzaId):null;
+  if(pizzaId&&!pizza)return;
+  if(!state.ingredients.length&&!pizza){showToast('Aggiungi prima qualche ingrediente alla dispensa.');navigate('ingredienti');return;}
+  editingPizzaId=pizza?.id||null;$('#pizza-form').reset();
+  $('#pizza-dialog-kicker').textContent=pizza?'MODIFICA RICETTA':'NUOVA RICETTA';
+  $('#pizza-dialog-title').innerHTML=pizza?'Modifica la tua pizza<span class="period">.</span>':'Una pizza tutta tua<span class="period">.</span>';
+  $('#pizza-save-button').innerHTML=pizza?'Salva le modifiche <span>↗</span>':'Salva la pizza <span>↗</span>';
+  $('#pizza-name').value=pizza?.name||'';
+  $$('input[name="pizza-type"]').forEach(input=>input.checked=input.value===(pizza?.type||'rossa'));
+  const selected=new Set(pizza?.ingredients||[]);
+  $('#pizza-ingredient-options').innerHTML=state.ingredients.map(item=>`<label class="ingredient-check"><input type="checkbox" name="pizza-ingredients" value="${escapeHtml(item.id)}" ${selected.has(item.id)?'checked':''} /><span>${escapeHtml(item.name)}</span><small>${labelUnit(item.unit)}</small></label>`).join('')||'<span class="muted">Aggiungi ingredienti dalla dispensa per completare la ricetta.</span>';
+  $('#pizza-dialog').showModal();
+}
+function openIngredientDialog(ingredientId=null){
+  const ingredient=ingredientId?ingredientById(ingredientId):null;
+  if(ingredientId&&!ingredient)return;
+  editingIngredientId=ingredient?.id||null;$('#ingredient-form').reset();$('#ingredient-id').value=ingredient?.id||'';
+  $('#ingredient-name').value=ingredient?.name||'';$('#ingredient-unit').value=ingredient?.unit||'pz';
+  $('#ingredient-dialog-title').innerHTML=ingredient?'Modifica ingrediente<span class="period">.</span>':'Un nuovo ingrediente<span class="period">.</span>';
+  $('#ingredient-save-button').innerHTML=ingredient?'Salva le modifiche <span>↗</span>':'Aggiungi alla dispensa <span>↗</span>';
+  $('#ingredient-dialog').showModal();
+}
+function dateIso(year,month,day){return `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;}
+function openCalendar(){
+  const parts=(state.eventDate||'').split('-').map(Number);
+  calendarViewDate=state.eventDate?new Date(parts[0],parts[1]-1,1):new Date(new Date().getFullYear(),new Date().getMonth(),1);
+  renderCalendar();$('#calendar-dialog').showModal();
+}
+function renderCalendar(){
+  const year=calendarViewDate.getFullYear(),month=calendarViewDate.getMonth();
+  $('#calendar-month').textContent=new Intl.DateTimeFormat('it-IT',{month:'long',year:'numeric'}).format(calendarViewDate);
+  const firstOffset=(new Date(year,month,1).getDay()+6)%7,daysInMonth=new Date(year,month+1,0).getDate();
+  const today=new Date(),todayIso=dateIso(today.getFullYear(),today.getMonth(),today.getDate());
+  const selected=state.eventDate;
+  const blanks=Array.from({length:firstOffset},()=>'<span class="calendar-blank"></span>').join('');
+  const days=Array.from({length:daysInMonth},(_,i)=>{const day=i+1,iso=dateIso(year,month,day),classes=['calendar-day'];if(iso===todayIso)classes.push('today');if(iso===selected)classes.push('selected');return `<button type="button" class="${classes.join(' ')}" data-calendar-date="${iso}" aria-pressed="${iso===selected}">${day}</button>`;}).join('');
+  $('#calendar-days').innerHTML=blanks+days;
+}
+
 async function copyShopping(){const list=getShopping();if(!list.length)return;const date=formatDate(state.eventDate);const text=`LISTA DELLA SPESA — ${date}\n${list.map(item=>`☐ ${item.name} ${quantityLabel(item)}`).join('\n')}`;try{await navigator.clipboard.writeText(text);showToast('Lista copiata negli appunti!');}catch{showToast('Il browser non consente di copiare la lista.');}}
 
 function setCloudStatus(message){const status=$('.saved-status');if(status)status.innerHTML=`<i></i> ${escapeHtml(message)}`;}
@@ -143,12 +183,19 @@ async function initializeCloud(){
 document.addEventListener('click',event=>{
   const nav=event.target.closest('[data-view]');if(nav){navigate(nav.dataset.view);return;}
   const go=event.target.closest('[data-go]');if(go){navigate(go.dataset.go);return;}
+  if(event.target.closest('#calendar-trigger')){openCalendar();return;}
+  if(event.target.closest('#calendar-prev')){calendarViewDate=new Date(calendarViewDate.getFullYear(),calendarViewDate.getMonth()-1,1);renderCalendar();return;}
+  if(event.target.closest('#calendar-next')){calendarViewDate=new Date(calendarViewDate.getFullYear(),calendarViewDate.getMonth()+1,1);renderCalendar();return;}
+  if(event.target.closest('#calendar-clear')){state.eventDate='';save();$('#calendar-dialog').close();return;}
+  const day=event.target.closest('[data-calendar-date]');if(day){state.eventDate=day.dataset.calendarDate;save();$('#calendar-dialog').close();return;}
   const close=event.target.closest('[data-close]');if(close){close.closest('dialog').close();return;}
   const qty=event.target.closest('[data-quantity]');if(qty){const pizza=state.pizzas.find(p=>p.id===qty.dataset.quantity);pizza.count=Math.max(0,Math.min(99,pizza.count+Number(qty.dataset.step)));save();return;}
+  const editPizza=event.target.closest('[data-edit-pizza]');if(editPizza){openPizzaDialog(editPizza.dataset.editPizza);return;}
   const delPizza=event.target.closest('[data-delete-pizza]');if(delPizza){const pizza=state.pizzas.find(p=>p.id===delPizza.dataset.deletePizza);if(!pizza)return;if(!confirm(`Eliminare “${pizza.name}” dal ricettario?`))return;state.pizzas=state.pizzas.filter(p=>p.id!==pizza.id);save();showToast('Pizza rimossa dal ricettario.');return;}
+  const editIngredient=event.target.closest('[data-edit-ingredient]');if(editIngredient){openIngredientDialog(editIngredient.dataset.editIngredient);return;}
   const delIngredient=event.target.closest('[data-delete-ingredient]');if(delIngredient){const ingredient=ingredientById(delIngredient.dataset.deleteIngredient);if(!ingredient)return;if(!confirm(`Rimuovere “${ingredient.name}” dalla dispensa e dalle ricette?`))return;state.ingredients=state.ingredients.filter(i=>i.id!==ingredient.id);state.pizzas.forEach(p=>p.ingredients=p.ingredients.filter(id=>id!==ingredient.id));state.checked=state.checked.filter(id=>id!==ingredient.id);save();showToast('Ingrediente rimosso dalla dispensa.');return;}
   if(event.target.id==='new-pizza-btn'||event.target.id==='empty-new-pizza'){openPizzaDialog();return;}
-  if(event.target.id==='new-ingredient-btn'){$('#ingredient-form').reset();$('#ingredient-dialog').showModal();return;}
+  if(event.target.id==='new-ingredient-btn'){openIngredientDialog();return;}
   if(event.target.id==='copy-list-btn'){const date=formatDate(state.eventDate);$('#dialog-event-date').textContent=`${date} · ${state.guests||4} ${(state.guests||4)===1?'persona':'persone'}`;$('#dialog-shopping-list').innerHTML=getShopping().map(item=>`<div class="dialog-shop-item"><span>${escapeHtml(item.name)}</span><strong>${quantityLabel(item)}</strong></div>`).join('');$('#shopping-dialog').showModal();return;}
   if(event.target.id==='help-btn'){showToast('Scegli una pizza, imposta le quantità e la lista si aggiorna da sola.');return;}
 });
@@ -159,8 +206,23 @@ document.addEventListener('change',event=>{
 });
 $('#pizza-filters').addEventListener('click',event=>{const chip=event.target.closest('[data-filter]');if(!chip)return;currentFilter=chip.dataset.filter;$$('.filter-chip').forEach(item=>item.classList.toggle('selected',item===chip));render();});
 $('#pizza-search').addEventListener('input',render);$('#catalog-search').addEventListener('input',render);
-$('#pizza-form').addEventListener('submit',event=>{event.preventDefault();const name=$('#pizza-name').value.trim();if(!name)return;const selected=$$('input[name="pizza-ingredients"]:checked').map(input=>input.value);state.pizzas.push({id:`pizza-${crypto.randomUUID()}`,name,type:$('input[name="pizza-type"]:checked').value,ingredients:selected,count:0});$('#pizza-dialog').close();save();showToast('La nuova pizza è nel tuo ricettario!');});
-$('#ingredient-form').addEventListener('submit',event=>{event.preventDefault();const name=$('#ingredient-name').value.trim();if(!name)return;const duplicate=state.ingredients.some(item=>item.name.toLocaleLowerCase('it')===name.toLocaleLowerCase('it'));if(duplicate){showToast('Questo ingrediente è già in dispensa.');return;}state.ingredients.push({id:`ing-${crypto.randomUUID()}`,name,unit:$('#ingredient-unit').value});$('#ingredient-dialog').close();save();showToast('Ingrediente aggiunto alla dispensa!');});
+$('#pizza-form').addEventListener('submit',event=>{
+  event.preventDefault();const name=$('#pizza-name').value.trim();if(!name)return;
+  const duplicate=state.pizzas.some(item=>item.id!==editingPizzaId&&item.name.toLocaleLowerCase('it')===name.toLocaleLowerCase('it'));
+  if(duplicate){showToast('Esiste già una pizza con questo nome.');return;}
+  const selected=$('input[name="pizza-ingredients"]:checked').map(input=>input.value);const type=$('input[name="pizza-type"]:checked').value;
+  if(editingPizzaId){const pizza=state.pizzas.find(item=>item.id===editingPizzaId);if(!pizza)return;pizza.name=name;pizza.type=type;pizza.ingredients=selected;}
+  else state.pizzas.push({id:`pizza-${crypto.randomUUID()}`,name,type,ingredients:selected,count:0});
+  const edited=Boolean(editingPizzaId);editingPizzaId=null;$('#pizza-dialog').close();save();showToast(edited?'Ricetta aggiornata!':'La nuova pizza è nel tuo ricettario!');
+});
+$('#ingredient-form').addEventListener('submit',event=>{
+  event.preventDefault();const name=$('#ingredient-name').value.trim();if(!name)return;const unit=$('#ingredient-unit').value;
+  const duplicate=state.ingredients.some(item=>item.id!==editingIngredientId&&item.name.toLocaleLowerCase('it')===name.toLocaleLowerCase('it'));
+  if(duplicate){showToast('Questo ingrediente è già in dispensa.');return;}
+  if(editingIngredientId){const ingredient=ingredientById(editingIngredientId);if(!ingredient)return;ingredient.name=name;ingredient.unit=unit;}
+  else state.ingredients.push({id:`ing-${crypto.randomUUID()}`,name,unit});
+  const edited=Boolean(editingIngredientId);editingIngredientId=null;$('#ingredient-dialog').close();save();showToast(edited?'Ingrediente aggiornato!':'Ingrediente aggiunto alla dispensa!');
+});
 function setAuthMessage(message,type=''){const el=$('#auth-message');el.textContent=message;el.className='auth-message'+(type?' '+type:'');}
 $('#auth-toggle').addEventListener('click',()=>{
   authMode=authMode==='signin'?'signup':'signin';
