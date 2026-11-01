@@ -10,4 +10,5 @@
 
 .event-row-actions{display:flex;align-items:center;gap:6px;flex:0 0 auto}.event-delete-button{border:1px solid #ead7d0;border-radius:5px;background:#fff9f6;color:#a55b4c;padding:7px 9px;font-size:10px;font-weight:700;cursor:pointer}.event-delete-button:hover{background:#faece7;border-color:#d8afa3}
 
+.special-kind{display:inline-flex;align-items:center;margin-top:5px;border:1px solid #e5dfce;border-radius:20px;padding:3px 7px;color:var(--olive);font-size:8px;font-weight:700;letter-spacing:.6px}.special-order-heading{display:flex;justify-content:space-between;align-items:flex-end;margin:32px 0 15px}.special-order-heading h2{font:600 22px 'Playfair Display',serif;margin:6px 0}.special-order-heading p{font-size:10px;color:#8b897d;margin:0}.special-card .pizza-ingredients{min-height:28px}
 .pizza-notes{margin:-4px 0 13px;padding:8px 10px;border-left:2px solid var(--gold);background:#faf7ef;color:#777363;font-size:11px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}.pizza-notes strong{color:#555544;font-weight:700}.pizza-notes-field{margin-top:17px}textarea.plain-input{resize:vertical;min-height:76px;font:400 11px/1.5 'DM Sans',sans-serif}
