@@ -336,7 +336,7 @@ $('#pizza-form').addEventListener('submit',event=>{
   event.preventDefault();const name=$('#pizza-name').value.trim();if(!name)return;
   const duplicate=state.pizzas.some(item=>item.id!==editingPizzaId&&item.name.toLocaleLowerCase('it')===name.toLocaleLowerCase('it'));
   if(duplicate){showToast('Esiste già una pizza con questo nome.');return;}
-  const selected=$('input[name="pizza-ingredients"]:checked').map(input=>input.value);const type=$('input[name="pizza-type"]:checked').value;const notes=$('#pizza-notes').value.trim();
+  const selected=$$('input[name="pizza-ingredients"]:checked').map(input=>input.value);const type=$('input[name="pizza-type"]:checked').value;const notes=$('#pizza-notes').value.trim();
   if(editingPizzaId){const pizza=state.pizzas.find(item=>item.id===editingPizzaId);if(!pizza)return;pizza.name=name;pizza.type=type;pizza.notes=notes;pizza.ingredients=selected;}
   else state.pizzas.push({id:`pizza-${crypto.randomUUID()}`,name,type,notes,ingredients:selected,count:0});
   const edited=Boolean(editingPizzaId);editingPizzaId=null;$('#pizza-dialog').close();save();showToast(edited?'Ricetta aggiornata!':'La nuova pizza è nel tuo ricettario!');
@@ -345,7 +345,7 @@ $('#special-form').addEventListener('submit',event=>{
   event.preventDefault();const name=$('#special-name').value.trim();if(!name)return;
   const duplicate=state.specials.some(item=>item.id!==editingSpecialId&&item.name.toLocaleLowerCase('it')===name.toLocaleLowerCase('it'));
   if(duplicate){showToast('Esiste già una preparazione con questo nome.');return;}
-  const ingredients=$('input[name="special-ingredients"]:checked').map(input=>input.value);const notes=$('#special-notes').value.trim();
+  const ingredients=$$('input[name="special-ingredients"]:checked').map(input=>input.value);const notes=$('#special-notes').value.trim();
   if(editingSpecialId){const item=state.specials.find(row=>row.id===editingSpecialId);if(!item)return;item.name=name;item.ingredients=ingredients;item.notes=notes;}
   else state.specials.push({id:`special-${crypto.randomUUID()}`,name,ingredients,notes,count:0});
   const edited=Boolean(editingSpecialId);editingSpecialId=null;$('#special-dialog').close();save();showToast(edited?'Preparazione aggiornata!':'La speciale è nel tuo ricettario!');
