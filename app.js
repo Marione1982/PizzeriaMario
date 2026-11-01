@@ -177,7 +177,7 @@ function openIngredientDialog(ingredientId=null){
   const ingredient=ingredientId?ingredientById(ingredientId):null;
   if(ingredientId&&!ingredient)return;
   editingIngredientId=ingredient?.id||null;$('#ingredient-form').reset();$('#ingredient-id').value=ingredient?.id||'';
-  $('#ingredient-name').value=ingredient?.name||'';$('#ingredient-unit').value=ingredient?.unit||'pz';
+  $('#ingredient-name').value=ingredient?.name||'';
   $('#ingredient-dialog-title').innerHTML=ingredient?'Modifica ingrediente<span class="period">.</span>':'Un nuovo ingrediente<span class="period">.</span>';
   $('#ingredient-save-button').innerHTML=ingredient?'Salva le modifiche <span>↗</span>':'Aggiungi alla dispensa <span>↗</span>';
   $('#ingredient-dialog').showModal();
@@ -227,7 +227,7 @@ async function loadCloudState(user){
   const quantities=new Map((active?.menu||[]).map(item=>[item.pizza_id,item.quantity]));
   const localQuantities=new Map(local.pizzas.map(pizza=>[pizza.id,pizza.count||0]));const localSpecialQuantities=new Map((local.specials||[]).map(item=>[item.id,item.count||0]));
   state={events,activeEventId:active?.id||null,eventDate:active?.event_date||(!events.length?(local.eventDate||''):''),guests:active?.guest_count||(!events.length?(local.guests||4):4),
-    ingredients:ingredients.map(item=>({id:item.id,name:item.name,unit:item.unit})),
+    ingredients:ingredients.map(item=>({id:item.id,name:item.name,unit:'pz'})),
     pizzas:pizzas.map(pizza=>({id:pizza.id,name:pizza.name,type:pizza.type,notes:pizza.notes||'',count:active?(quantities.get(pizza.id)||0):(localQuantities.get(pizza.id)||0),ingredients:links.filter(link=>link.pizza_id===pizza.id).map(link=>link.ingredient_id)})),
     specials:specials.map(item=>({id:item.id,name:item.name,notes:item.notes||'',count:active?(new Map((active.special_menu||[]).map(row=>[row.special_id,row.quantity])).get(item.id)||0):(localSpecialQuantities.get(item.id)||0),ingredients:specialLinks.filter(link=>link.special_id===item.id).map(link=>link.ingredient_id)})),
     checked:active?(active.checked_ingredients||[]).filter(id=>ingredients.some(item=>item.id===id)):(!events.length?(local.checked||[]):[])};
@@ -246,7 +246,7 @@ async function persistActiveEvent(userId){
   if(specialMenu.length)requireCloud(await supabaseClient.from('event_specials').insert(specialMenu));
 }
 async function syncCloudSnapshot(userId){
-  const ingredients=state.ingredients.map(({id,name,unit})=>({id,user_id:userId,name,unit}));
+  const ingredients=state.ingredients.map(({id,name})=>({id,user_id:userId,name,unit:'pz'}));
   const pizzas=state.pizzas.map(({id,name,type,notes})=>({id,user_id:userId,name,type,notes:notes||''}));
   const specials=state.specials.map(({id,name,notes})=>({id,user_id:userId,name,notes:notes||''}));
   if(ingredients.length)requireCloud(await supabaseClient.from('ingredients').upsert(ingredients,{onConflict:'user_id,id'}));
@@ -361,7 +361,7 @@ $('#special-form').addEventListener('submit',event=>{
   const edited=Boolean(editingSpecialId);editingSpecialId=null;$('#special-dialog').close();save();showToast(edited?'Preparazione aggiornata!':'La speciale è nel tuo ricettario!');
 });
 $('#ingredient-form').addEventListener('submit',event=>{
-  event.preventDefault();const name=$('#ingredient-name').value.trim();if(!name)return;const unit=$('#ingredient-unit').value;
+  event.preventDefault();const name=$('#ingredient-name').value.trim();if(!name)return;const unit='pz';
   const duplicate=state.ingredients.some(item=>item.id!==editingIngredientId&&item.name.toLocaleLowerCase('it')===name.toLocaleLowerCase('it'));
   if(duplicate){showToast('Questo ingrediente è già in dispensa.');return;}
   if(editingIngredientId){const ingredient=ingredientById(editingIngredientId);if(!ingredient)return;ingredient.name=name;ingredient.unit=unit;}
