@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f6f0e5" />
+    <title>Forno di casa — La tua serata pizza</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <section class="auth-screen" id="auth-screen">
+      <div class="auth-card">
+        <a class="brand auth-brand" href="#home"><span class="brand-mark">✳</span><span>forno<span class="brand-light"> di casa</span></span></a>
+        <div class="eyebrow"><span class="eyebrow-line"></span> IL TUO RICETTARIO, OVUNQUE</div>
+        <h1>Pizza night<span class="period">.</span></h1>
+        <p class="auth-copy">Accedi per ritrovare le tue pizze e la lista della spesa su tutti i tuoi dispositivi.</p>
+        <form id="auth-form">
+          <label class="field"><span>LA TUA EMAIL</span><input class="plain-input" id="auth-email" type="email" placeholder="nome@esempio.it" autocomplete="email" required /></label>
+          <button class="primary-button auth-submit" id="auth-send" type="submit">Mandami il link di accesso <span>↗</span></button>
+        </form>
+        <p class="auth-message" id="auth-message" role="status">Riceverai un link monouso per accedere senza password.</p>
+        <div class="auth-foot"><span>♨</span> Apri da http://localhost:3000 per la sincronizzazione.</div>
+      </div>
+      <div class="auth-decoration"><span>✳</span><strong>BUONA<br />PIZZA</strong><small>DAL TUO FORNO<br />AL TUO CUORE</small></div>
+    </section>
+
+    <div class="app-shell" id="app-shell" hidden>
+      <aside class="sidebar">
+        <a class="brand" href="#home" aria-label="Forno di casa home">
+          <span class="brand-mark">✳</span><span>forno<span class="brand-light"> di casa</span></span>
+        </a>
+        <div class="sidebar-label">IL TUO SPAZIO</div>
+        <nav class="main-nav" aria-label="Navigazione principale">
+          <button class="nav-item active" data-view="serata"><span class="nav-icon">◷</span>La serata</button>
+          <button class="nav-item" data-view="pizze"><span class="nav-icon">◉</span>Le pizze <span class="nav-count" id="pizza-count">0</span></button>
+          <button class="nav-item" data-view="ingredienti"><span class="nav-icon">✳</span>Ingredienti</button>
+        </nav>
+        <div class="sidebar-bottom">
+          <div class="oven-card"><div class="oven-icon">♨</div><p>Il forno è caldo.<br /><strong>Si comincia?</strong></p><span>BUON APPETITO!</span></div>
+          <div class="profile"><div class="avatar">F</div><div class="profile-user"><strong>Il tuo ricettario</strong><small>Sincronizzazione attiva</small></div><button class="signout-button" id="signout-btn" title="Esci" aria-label="Esci">↗</button></div>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div class="breadcrumb">IL TUO RICETTARIO <span>/</span> <b id="crumb-current">LA SERATA</b></div>
+          <div class="topbar-actions"><span class="saved-status"><i></i> Salvato in questo dispositivo</span><button class="icon-button" id="help-btn" aria-label="Informazioni">?</button></div>
+        </header>
+
+        <section class="view active" id="view-serata">
+          <div class="hero-row">
+            <div><div class="eyebrow"><span class="eyebrow-line"></span> UNA BUONA SERATA INIZIA QUI</div><h1>Pizza night<span class="period">.</span></h1><p class="subheading">Scegli le pizze, pensa agli ospiti. Al resto ci pensiamo insieme.</p></div>
+            <div class="hero-stamp"><span>FATTO CON</span><b>♥</b><span>E FARINA</span></div>
+          </div>
+
+          <div class="planning-card">
+            <div class="planning-heading"><div><span class="section-kicker">01 — ORGANIZZIAMO</span><h2>La tua serata</h2></div><span class="step-chip">PIANIFICAZIONE</span></div>
+            <div class="planning-fields">
+              <label class="field date-field"><span>QUANDO SI IMPASTA?</span><div class="input-wrap"><span class="input-icon">▦</span><input type="date" id="event-date" /></div></label>
+              <label class="field guests-field"><span>QUANTI A TAVOLA?</span><div class="input-wrap"><span class="input-icon">♧</span><input type="number" id="guests" min="1" max="99" value="4" /><span class="input-suffix">persone</span></div></label>
+              <div class="guest-note"><span>✦</span> Lievitazione consigliata: <b>24 ore</b></div>
+            </div>
+          </div>
+
+          <div class="menu-heading"><div><span class="section-kicker">02 — IL MENU</span><h2>Che cosa sforniamo?</h2><p>Scegli le pizze e indica quante te ne servono.</p></div><button class="text-button" data-go="pizze">Gestisci le pizze <span>↗</span></button></div>
+          <div class="filter-row"><div class="filters" id="pizza-filters"><button class="filter-chip selected" data-filter="tutte">Tutte <span id="all-count">0</span></button><button class="filter-chip" data-filter="rosse">Rosse</button><button class="filter-chip" data-filter="bianche">Bianche</button></div><div class="search-box"><span>⌕</span><input type="search" id="pizza-search" placeholder="Cerca una pizza…" /></div></div>
+          <div class="pizza-grid" id="pizza-grid"></div>
+          <button class="add-pizza-tile" data-go="pizze"><span class="add-circle">+</span><span><strong>La tua prossima pizza</strong><small>Aggiungi una ricetta al menu</small></span><span class="tile-arrow">↗</span></button>
+        </section>
+
+        <section class="view" id="view-pizze">
+          <div class="page-title-row"><div><div class="eyebrow"><span class="eyebrow-line"></span> IL TUO RICETTARIO</div><h1>Le pizze<span class="period">.</span></h1><p class="subheading">Ogni grande serata ha il suo menu.</p></div><button class="primary-button" id="new-pizza-btn"><span>＋</span> Nuova pizza</button></div>
+          <div class="catalog-toolbar"><span id="catalog-summary">0 ricette nel ricettario</span><div class="search-box"><span>⌕</span><input type="search" id="catalog-search" placeholder="Cerca una pizza…" /></div></div>
+          <div class="pizza-grid catalog-grid" id="catalog-grid"></div>
+        </section>
+
+        <section class="view" id="view-ingredienti">
+          <div class="page-title-row"><div><div class="eyebrow"><span class="eyebrow-line"></span> LA DISPENSA</div><h1>Ingredienti<span class="period">.</span></h1><p class="subheading">La dispensa perfetta comincia da una buona lista.</p></div><button class="primary-button" id="new-ingredient-btn"><span>＋</span> Nuovo ingrediente</button></div>
+          <div class="ingredient-intro"><span class="ingredient-intro-icon">✳</span><div><strong>Un solo elenco, infinite combinazioni.</strong><p>Gli ingredienti qui sotto compongono le pizze del tuo ricettario.</p></div></div>
+          <div class="ingredient-list" id="ingredient-list"></div>
+        </section>
+      </main>
+
+      <aside class="shopping-panel">
+        <div class="shop-top"><div><span class="section-kicker">PRONTI PER LA SPESA?</span><h2>La lista<span class="period">.</span></h2></div><span class="bag-icon">♧</span></div>
+        <div class="shop-event"><span class="calendar-icon">▦</span><div><strong id="shop-date">La tua prossima serata</strong><small id="shop-guests">4 persone a tavola</small></div></div>
+        <div class="shopping-divider"><span>INGREDIENTI</span><span id="shopping-count">0</span></div>
+        <div class="shopping-list" id="shopping-list"></div>
+        <div class="shopping-empty" id="shopping-empty"><span>✳</span><strong>Il forno è pronto.</strong><p>Aggiungi qualche pizza al menu e la lista della spesa si comporrà da sola.</p></div>
+        <div class="shopping-bottom"><div class="shopping-total"><span>INGREDIENTI DA PRENDERE</span><strong id="shopping-total">0 <small>voci</small></strong></div><button class="shopping-button" id="copy-list-btn" disabled><span>↗</span> Lista della spesa</button><p class="privacy-note"><span>◈</span> La tua lista resta privata su questo dispositivo.</p></div>
+      </aside>
+    </div>
+
+    <dialog id="pizza-dialog" class="modal"><form id="pizza-form"><div class="modal-top"><div><span class="section-kicker">NUOVA RICETTA</span><h2>Una pizza tutta tua<span class="period">.</span></h2></div><button type="button" class="close-button" data-close>×</button></div><label class="field"><span>COME LA CHIAMIAMO?</span><input id="pizza-name" class="plain-input" placeholder="Es. La piccante" required maxlength="50" /></label><fieldset class="type-field"><legend>CHE ANIMA HA?</legend><div class="type-options"><label class="type-option"><input type="radio" name="pizza-type" value="rossa" checked /><span>🍅 Rossa</span></label><label class="type-option"><input type="radio" name="pizza-type" value="bianca" /><span>🤍 Bianca</span></label></div></fieldset><fieldset class="ingredient-fieldset"><legend>CHE COSA CI METTIAMO?</legend><div id="pizza-ingredient-options" class="ingredient-options"></div></fieldset><button class="primary-button modal-submit" type="submit">Salva la pizza <span>↗</span></button></form></dialog>
+    <dialog id="ingredient-dialog" class="modal small-modal"><form id="ingredient-form"><div class="modal-top"><div><span class="section-kicker">LA DISPENSA</span><h2>Un nuovo ingrediente<span class="period">.</span></h2></div><button type="button" class="close-button" data-close>×</button></div><label class="field"><span>NOME INGREDIENTE</span><input id="ingredient-name" class="plain-input" placeholder="Es. Mozzarella fiordilatte" required maxlength="60" /></label><label class="field"><span>UNITÀ DI MISURA</span><select id="ingredient-unit" class="plain-input"><option value="pz">pezzi</option><option value="g">grammi</option><option value="ml">millilitri</option><option value="qb">quanto basta</option></select></label><button class="primary-button modal-submit" type="submit">Aggiungi alla dispensa <span>↗</span></button></form></dialog>
+    <dialog id="shopping-dialog" class="modal shopping-modal"><div class="modal-top"><div><span class="section-kicker">IL MENU È PRONTO</span><h2>La lista della spesa<span class="period">.</span></h2></div><button type="button" class="close-button" data-close>×</button></div><p class="shopping-dialog-date" id="dialog-event-date"></p><div id="dialog-shopping-list" class="dialog-shopping-list"></div><button class="primary-button modal-submit" id="dialog-copy-btn"><span>↗</span> Copia lista</button></dialog>
+    <div id="toast" class="toast" role="status"></div>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0"></script>
+    <script src="supabase-config.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
