@@ -75,7 +75,7 @@ function renderSavedEvents(){
   $('#event-status').textContent=state.activeEventId?'Stai modificando '+(state.eventDate?formatDate(state.eventDate):'una serata senza data'):'Nuova serata: scegli la data e le pizze, poi salva.';
   $('#save-event-btn').innerHTML=state.activeEventId?'Aggiorna la serata <span>↗</span>':'Salva la serata <span>↗</span>';
   $('#saved-events-list').innerHTML=events.length?events.map(event=>{
-    const menu=(event.menu||[]).map(item=>{const pizza=state.pizzas.find(p=>p.id===item.pizza_id);return pizza?escapeHtml(pizza.name)+' ×'+item.quantity:null;}).filter(Boolean);
+    const menu=(event.menu||[]).filter(item=>Number(item.quantity)>0).map(item=>{const pizza=state.pizzas.find(p=>p.id===item.pizza_id);return pizza?escapeHtml(pizza.name)+' ×'+item.quantity:null;}).filter(Boolean);
     const date=event.event_date?formatDate(event.event_date):'Data da definire';
     const guests=Number(event.guest_count)||4;
     return '<article class="saved-event-row '+(event.id===state.activeEventId?'active':'')+'"><div class="saved-event-copy"><strong>'+escapeHtml(date)+'</strong><small>'+guests+' '+(guests===1?'ospite':'ospiti')+' · '+(menu.length?menu.join(' · '):'Nessuna pizza selezionata')+'</small></div><button class="event-open-button" data-open-event="'+escapeHtml(event.id)+'">'+(event.id===state.activeEventId?'In modifica':'Apri')+'</button></article>';
