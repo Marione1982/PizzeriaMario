@@ -37,6 +37,7 @@ create table if not exists public.pizza_events (
   user_id uuid not null references auth.users(id) on delete cascade,
   event_date date,
   guest_count integer not null default 4 check (guest_count between 1 and 99),
+  checked_ingredients text[] not null default array[]::text[],
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   primary key (user_id, id),
@@ -59,6 +60,10 @@ alter table public.pizzas enable row level security;
 alter table public.pizza_ingredients enable row level security;
 alter table public.pizza_events enable row level security;
 alter table public.event_pizzas enable row level security;
+
+alter publication supabase_realtime add table
+  public.ingredients, public.pizzas, public.pizza_ingredients,
+  public.pizza_events, public.event_pizzas;
 
 revoke all on public.ingredients, public.pizzas, public.pizza_ingredients,
   public.pizza_events, public.event_pizzas from anon;
