@@ -44,7 +44,7 @@ function formatDate(value){if(!value)return 'La tua prossima serata';const d=new
 function pizzaCard(pizza,showQuantity=false){
   const names=pizza.ingredients.map(id=>ingredientById(id)?.name).filter(Boolean);
   const actions=showQuantity?'':`<div class="card-actions"><button class="card-menu edit-pizza" title="Modifica ${escapeHtml(pizza.name)}" aria-label="Modifica ${escapeHtml(pizza.name)}" data-edit-pizza="${escapeHtml(pizza.id)}">✎</button><button class="card-menu" title="Elimina ${escapeHtml(pizza.name)}" aria-label="Elimina ${escapeHtml(pizza.name)}" data-delete-pizza="${escapeHtml(pizza.id)}">×</button></div>`;
-  return `<article class="pizza-card" data-pizza-card="${escapeHtml(pizza.id)}"><div class="card-top"><div><h3 class="pizza-name">${escapeHtml(pizza.name)}</h3><span class="pizza-kind"><i class="kind-dot ${pizza.type==='bianca'?'white':''}"></i>${pizza.type}</span></div>${actions}</div><p class="pizza-ingredients">${names.length?names.map(escapeHtml).join(' · '):'Nessun ingrediente selezionato'}</p><div class="card-bottom"><span class="portion-label">${showQuantity?'NEL MENU':'RICETTA'}</span>${showQuantity?`<div class="quantity-control"><button aria-label="Riduci ${escapeHtml(pizza.name)}" data-quantity="${escapeHtml(pizza.id)}" data-step="-1">−</button><span class="quantity">${pizza.count}</span><button aria-label="Aggiungi ${escapeHtml(pizza.name)}" data-quantity="${escapeHtml(pizza.id)}" data-step="1">+</button></div>`:`<span class="portion-label">${names.length} ${names.length===1?'ingrediente':'ingredienti'}</span>`}</div></article>`;
+  return `<article class="pizza-card" data-pizza-card="${escapeHtml(pizza.id)}"><div class="card-top"><div><h3 class="pizza-name">${escapeHtml(pizza.name)}</h3><span class="pizza-kind"><i class="kind-dot ${pizza.type==='bianca'?'white':''}"></i>${pizza.type}</span></div>${actions}</div><p class="pizza-ingredients">${names.length?names.map(escapeHtml).join(' · '):'Nessun ingrediente selezionato'}</p>${pizza.notes?`<p class="pizza-notes"><strong>Note:</strong> ${escapeHtml(pizza.notes)}</p>`:''}<div class="card-bottom"><span class="portion-label">${showQuantity?'NEL MENU':'RICETTA'}</span>${showQuantity?`<div class="quantity-control"><button aria-label="Riduci ${escapeHtml(pizza.name)}" data-quantity="${escapeHtml(pizza.id)}" data-step="-1">−</button><span class="quantity">${pizza.count}</span><button aria-label="Aggiungi ${escapeHtml(pizza.name)}" data-quantity="${escapeHtml(pizza.id)}" data-step="1">+</button></div>`:`<span class="portion-label">${names.length} ${names.length===1?'ingrediente':'ingredienti'}</span>`}</div></article>`;
 }
 function render(){
   $('#event-date').value=state.eventDate||'';$('#event-date-label').textContent=state.eventDate?formatDate(state.eventDate):'Seleziona una data';$('#guests').value=state.guests||4;
@@ -138,7 +138,7 @@ function openPizzaDialog(pizzaId=null){
   $('#pizza-dialog-kicker').textContent=pizza?'MODIFICA RICETTA':'NUOVA RICETTA';
   $('#pizza-dialog-title').innerHTML=pizza?'Modifica la tua pizza<span class="period">.</span>':'Una pizza tutta tua<span class="period">.</span>';
   $('#pizza-save-button').innerHTML=pizza?'Salva le modifiche <span>↗</span>':'Salva la pizza <span>↗</span>';
-  $('#pizza-name').value=pizza?.name||'';
+  $('#pizza-name').value=pizza?.name||'';$('#pizza-notes').value=pizza?.notes||'';
   $$('input[name="pizza-type"]').forEach(input=>input.checked=input.value===(pizza?.type||'rossa'));
   const selected=new Set(pizza?.ingredients||[]);
   $('#pizza-ingredient-options').innerHTML=state.ingredients.map(item=>`<label class="ingredient-check"><input type="checkbox" name="pizza-ingredients" value="${escapeHtml(item.id)}" ${selected.has(item.id)?'checked':''} /><span>${escapeHtml(item.name)}</span><small>${labelUnit(item.unit)}</small></label>`).join('')||'<span class="muted">Aggiungi ingredienti dalla dispensa per completare la ricetta.</span>';
@@ -177,7 +177,7 @@ function requireCloud(result){if(result.error)throw result.error;return result.d
 async function loadCloudState(user){
   const [ingredientResult,pizzaResult,linkResult,eventResult,eventPizzaResult]=await Promise.all([
     supabaseClient.from('ingredients').select('id,name,unit').eq('user_id',user.id).order('name'),
-    supabaseClient.from('pizzas').select('id,name,type').eq('user_id',user.id).order('name'),
+    supabaseClient.from('pizzas').select('id,name,type,notes').eq('user_id',user.id).order('name'),
     supabaseClient.from('pizza_ingredients').select('pizza_id,ingredient_id,quantity_per_pizza').eq('user_id',user.id),
     supabaseClient.from('pizza_events').select('id,event_date,guest_count,checked_ingredients,updated_at').eq('user_id',user.id),
     supabaseClient.from('event_pizzas').select('event_id,pizza_id,quantity').eq('user_id',user.id)
@@ -192,7 +192,7 @@ async function loadCloudState(user){
   const localQuantities=new Map(local.pizzas.map(pizza=>[pizza.id,pizza.count||0]));
   state={events,activeEventId:active?.id||null,eventDate:active?.event_date||(!events.length?(local.eventDate||''):''),guests:active?.guest_count||(!events.length?(local.guests||4):4),
     ingredients:ingredients.map(item=>({id:item.id,name:item.name,unit:item.unit})),
-    pizzas:pizzas.map(pizza=>({id:pizza.id,name:pizza.name,type:pizza.type,count:active?(quantities.get(pizza.id)||0):(localQuantities.get(pizza.id)||0),ingredients:links.filter(link=>link.pizza_id===pizza.id).map(link=>link.ingredient_id)})),
+    pizzas:pizzas.map(pizza=>({id:pizza.id,name:pizza.name,type:pizza.type,notes:pizza.notes||'',count:active?(quantities.get(pizza.id)||0):(localQuantities.get(pizza.id)||0),ingredients:links.filter(link=>link.pizza_id===pizza.id).map(link=>link.ingredient_id)})),
     checked:active?(active.checked_ingredients||[]).filter(id=>ingredients.some(item=>item.id===id)):(!events.length?(local.checked||[]):[])};
   localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
 }
@@ -207,7 +207,7 @@ async function persistActiveEvent(userId){
 }
 async function syncCloudSnapshot(userId){
   const ingredients=state.ingredients.map(({id,name,unit})=>({id,user_id:userId,name,unit}));
-  const pizzas=state.pizzas.map(({id,name,type})=>({id,user_id:userId,name,type}));
+  const pizzas=state.pizzas.map(({id,name,type,notes})=>({id,user_id:userId,name,type,notes:notes||''}));
   if(ingredients.length)requireCloud(await supabaseClient.from('ingredients').upsert(ingredients,{onConflict:'user_id,id'}));
   if(pizzas.length)requireCloud(await supabaseClient.from('pizzas').upsert(pizzas,{onConflict:'user_id,id'}));
   const remoteIngredients=requireCloud(await supabaseClient.from('ingredients').select('id').eq('user_id',userId))||[];
@@ -293,9 +293,9 @@ $('#pizza-form').addEventListener('submit',event=>{
   event.preventDefault();const name=$('#pizza-name').value.trim();if(!name)return;
   const duplicate=state.pizzas.some(item=>item.id!==editingPizzaId&&item.name.toLocaleLowerCase('it')===name.toLocaleLowerCase('it'));
   if(duplicate){showToast('Esiste già una pizza con questo nome.');return;}
-  const selected=$('input[name="pizza-ingredients"]:checked').map(input=>input.value);const type=$('input[name="pizza-type"]:checked').value;
-  if(editingPizzaId){const pizza=state.pizzas.find(item=>item.id===editingPizzaId);if(!pizza)return;pizza.name=name;pizza.type=type;pizza.ingredients=selected;}
-  else state.pizzas.push({id:`pizza-${crypto.randomUUID()}`,name,type,ingredients:selected,count:0});
+  const selected=$('input[name="pizza-ingredients"]:checked').map(input=>input.value);const type=$('input[name="pizza-type"]:checked').value;const notes=$('#pizza-notes').value.trim();
+  if(editingPizzaId){const pizza=state.pizzas.find(item=>item.id===editingPizzaId);if(!pizza)return;pizza.name=name;pizza.type=type;pizza.notes=notes;pizza.ingredients=selected;}
+  else state.pizzas.push({id:`pizza-${crypto.randomUUID()}`,name,type,notes,ingredients:selected,count:0});
   const edited=Boolean(editingPizzaId);editingPizzaId=null;$('#pizza-dialog').close();save();showToast(edited?'Ricetta aggiornata!':'La nuova pizza è nel tuo ricettario!');
 });
 $('#ingredient-form').addEventListener('submit',event=>{
