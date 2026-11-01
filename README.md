@@ -6,7 +6,7 @@ Webapp in italiano per organizzare una serata pizza, comporre un menu dal propri
 
 Avvia un server statico dalla cartella del progetto, ad esempio `python3 -m http.server 3000`, e visita `http://localhost:3000`. L'accesso cloud richiede un'origine `http://` o `https://`; aprire direttamente `index.html` (`file://`) non consente il login.
 
-Data, invitati, menu, ingredienti e spunte della lista vengono salvati su Supabase e aggiornati tra dispositivi aperti. La lista combina gli ingredienti delle pizze selezionate: se sei pizze usano mozzarella, mostra `× 6`.
+La data della serata si sceglie da un calendario. Pizze e ingredienti possono essere aggiunti, modificati o rimossi; le modifiche aggiornano anche il menu e la lista della spesa. Data, invitati, menu, ingredienti e spunte della lista vengono salvati su Supabase e aggiornati tra dispositivi aperti. La lista combina gli ingredienti delle pizze selezionate: se sei pizze usano mozzarella, mostra `× 6`.
 
 ## Supabase
 
