@@ -1,6 +1,6 @@
 # Forno di casa
 
-Webapp in italiano per organizzare una serata pizza, comporre un menu dal proprio ricettario e ricavare una lista della spesa aggregata. Ricette, ingredienti, serata e spunte della spesa vengono sincronizzati in tempo reale su Supabase dopo l'accesso con link email.
+Webapp in italiano per organizzare una serata pizza, comporre un menu dal proprio ricettario e ricavare una lista della spesa aggregata. Ricette, ingredienti, serata e spunte della spesa vengono sincronizzati in tempo reale su Supabase dopo l'accesso con email e password.
 
 ## Avvio
 
@@ -12,7 +12,7 @@ Data, invitati, menu, ingredienti e spunte della lista vengono salvati su Supaba
 
 Collegamento al progetto `Pizzeria da Mario` tramite `supabase-config.js`. Lo schema in `supabase/schema.sql` è stato applicato al database: le tabelle usano RLS e ogni utente autenticato vede soltanto i propri dati.
 
-L'accesso usa link email monouso. In Authentication → URL Configuration aggiungi gli indirizzi autorizzati: `http://localhost:3000/**` per uso locale e `https://marione1982.github.io/PizzeriaMario/**` per il sito pubblico. La chiave publishable presente nel client è pubblica per progetto; non inserire mai una chiave `service_role` o una chiave segreta nel browser.
+L'accesso usa email e password, con conferma email alla registrazione e recupero password via email. Gli account creati in precedenza con link monouso possono impostare la prima password scegliendo “Password dimenticata?”. In Authentication → URL Configuration aggiungi gli indirizzi autorizzati: `http://localhost:3000/**` per uso locale e `https://marione1982.github.io/PizzeriaMario/**` per il sito pubblico. La chiave publishable presente nel client è pubblica per progetto; non inserire mai una chiave `service_role` o una chiave segreta nel browser.
 
 ## GitHub
 
