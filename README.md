@@ -1,22 +1,24 @@
 # Forno di casa
 
-Webapp in italiano per organizzare una serata pizza, comporre un menu dal proprio ricettario e ricavare una lista della spesa aggregata. Ricette, ingredienti e serata vengono sincronizzati su Supabase dopo l'accesso con link email.
+Webapp in italiano per organizzare una serata pizza, comporre un menu dal proprio ricettario e ricavare una lista della spesa aggregata. Ricette, ingredienti, serata e spunte della spesa vengono sincronizzati in tempo reale su Supabase dopo l'accesso con link email.
 
 ## Avvio
 
 Avvia un server statico dalla cartella del progetto, ad esempio `python3 -m http.server 3000`, e visita `http://localhost:3000`. L'accesso cloud richiede un'origine `http://` o `https://`; aprire direttamente `index.html` (`file://`) non consente il login.
 
-Date, numero di invitati, pizze e ingredienti vengono salvati su Supabase. La lista combina gli ingredienti delle pizze selezionate: se sei pizze usano mozzarella, mostra `× 6`. Le spunte della spesa sono salvate localmente nel browser.
+Data, invitati, menu, ingredienti e spunte della lista vengono salvati su Supabase e aggiornati tra dispositivi aperti. La lista combina gli ingredienti delle pizze selezionate: se sei pizze usano mozzarella, mostra `× 6`.
 
 ## Supabase
 
 Collegamento al progetto `Pizzeria da Mario` tramite `supabase-config.js`. Lo schema in `supabase/schema.sql` è stato applicato al database: le tabelle usano RLS e ogni utente autenticato vede soltanto i propri dati.
 
-L'accesso usa link email monouso. Se Supabase rifiuta il redirect, aggiungi `http://localhost:3000/**` all'elenco Redirect URLs in Authentication → URL Configuration. La chiave publishable presente nel client è pubblica per progetto; non inserire mai una chiave `service_role` o una chiave segreta nel browser.
+L'accesso usa link email monouso. In Authentication → URL Configuration aggiungi gli indirizzi autorizzati: `http://localhost:3000/**` per uso locale e `https://marione1982.github.io/PizzeriaMario/**` per il sito pubblico. La chiave publishable presente nel client è pubblica per progetto; non inserire mai una chiave `service_role` o una chiave segreta nel browser.
 
 ## GitHub
 
 Repository del progetto: [`Marione1982/PizzeriaMario`](https://github.com/Marione1982/PizzeriaMario).
+
+Il workflow in `.github/workflows/deploy.yml` pubblica il sito su GitHub Pages a ogni push su `main`, dopo avere impostato **Settings → Pages → Source → GitHub Actions**. URL previsto: <https://marione1982.github.io/PizzeriaMario/>.
 
 ## Contenuti
 
