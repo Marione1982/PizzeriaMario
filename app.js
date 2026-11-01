@@ -22,7 +22,7 @@ let state;
 try { state = JSON.parse(localStorage.getItem(STORAGE_KEY)) || structuredClone(seed); } catch { state = structuredClone(seed); }
 state.pizzas ||= []; state.ingredients ||= []; state.checked ||= [];
 let currentFilter = 'tutte'; let toastTimer;
-let supabaseClient = null; let currentUser = null; let loadedUserId = null; let cloudSyncTimer; let cloudSyncChain = Promise.resolve();
+let supabaseClient = null; let currentUser = null; let loadedUserId = null; let cloudSyncTimer; let realtimeReloadTimer; let realtimeChannel = null; let cloudSyncChain = Promise.resolve();
 const $ = (selector, root=document) => root.querySelector(selector);
 const $$ = (selector, root=document) => [...root.querySelectorAll(selector)];
 const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
@@ -72,16 +72,16 @@ async function loadCloudState(user){
     supabaseClient.from('ingredients').select('id,name,unit').eq('user_id',user.id).order('name'),
     supabaseClient.from('pizzas').select('id,name,type').eq('user_id',user.id).order('name'),
     supabaseClient.from('pizza_ingredients').select('pizza_id,ingredient_id,quantity_per_pizza').eq('user_id',user.id),
-    supabaseClient.from('pizza_events').select('id,event_date,guest_count').eq('user_id',user.id).maybeSingle()
+    supabaseClient.from('pizza_events').select('id,event_date,guest_count,checked_ingredients').eq('user_id',user.id).maybeSingle()
   ]);
   const ingredients=requireCloud(ingredientResult)||[];const pizzas=requireCloud(pizzaResult)||[];const links=requireCloud(linkResult)||[];const event=requireCloud(eventResult);
-  if(!ingredients.length&&!pizzas.length){await syncCloudSnapshot(user.id);return;}
+  if(!ingredients.length&&!pizzas.length&&!event){await syncCloudSnapshot(user.id);return;}
   const eventPizzas=event?requireCloud(await supabaseClient.from('event_pizzas').select('pizza_id,quantity').eq('user_id',user.id).eq('event_id',event.id))||[]:[];
   const quantities=new Map(eventPizzas.map(row=>[row.pizza_id,row.quantity]));
   state={eventDate:event?.event_date||'',guests:event?.guest_count||4,
     ingredients:ingredients.map(item=>({id:item.id,name:item.name,unit:item.unit})),
     pizzas:pizzas.map(pizza=>({id:pizza.id,name:pizza.name,type:pizza.type,count:quantities.get(pizza.id)||0,ingredients:links.filter(link=>link.pizza_id===pizza.id).map(link=>link.ingredient_id)})),
-    checked:state.checked.filter(id=>ingredients.some(item=>item.id===id))};
+    checked:(event?.checked_ingredients||[]).filter(id=>ingredients.some(item=>item.id===id))};
   localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
 }
 async function syncCloudSnapshot(userId){
@@ -98,7 +98,7 @@ async function syncCloudSnapshot(userId){
   requireCloud(await supabaseClient.from('pizza_ingredients').delete().eq('user_id',userId));
   const relations=state.pizzas.flatMap(pizza=>pizza.ingredients.map(ingredientId=>({user_id:userId,pizza_id:pizza.id,ingredient_id:ingredientId,quantity_per_pizza:1})));
   if(relations.length)requireCloud(await supabaseClient.from('pizza_ingredients').insert(relations));
-  const event=requireCloud(await supabaseClient.from('pizza_events').upsert({user_id:userId,event_date:state.eventDate||null,guest_count:Number(state.guests)||4,updated_at:new Date().toISOString()},{onConflict:'user_id'}).select('id').single());
+  const event=requireCloud(await supabaseClient.from('pizza_events').upsert({user_id:userId,event_date:state.eventDate||null,guest_count:Number(state.guests)||4,checked_ingredients:state.checked,updated_at:new Date().toISOString()},{onConflict:'user_id'}).select('id').single());
   requireCloud(await supabaseClient.from('event_pizzas').delete().eq('user_id',userId).eq('event_id',event.id));
   const menu=state.pizzas.map(pizza=>({user_id:userId,event_id:event.id,pizza_id:pizza.id,quantity:pizza.count||0}));
   if(menu.length)requireCloud(await supabaseClient.from('event_pizzas').insert(menu));
@@ -107,12 +107,29 @@ function scheduleCloudSync(){
   setCloudStatus('Sincronizzazione…');clearTimeout(cloudSyncTimer);
   cloudSyncTimer=setTimeout(()=>{const userId=currentUser?.id;if(!userId)return;cloudSyncChain=cloudSyncChain.catch(()=>{}).then(()=>syncCloudSnapshot(userId)).then(()=>{if(currentUser?.id===userId)setCloudStatus('Sincronizzato su Supabase');}).catch(error=>{console.error('Forno di casa sync:',error);if(currentUser?.id===userId)setCloudStatus('Sincronizzazione in pausa');});},450);
 }
+function refreshFromRealtime(){
+  clearTimeout(realtimeReloadTimer);
+  realtimeReloadTimer=setTimeout(async()=>{
+    const user=currentUser;if(!user)return;
+    try{await cloudSyncChain.catch(()=>{});await loadCloudState(user);if(currentUser?.id===user.id)render();}
+    catch(error){console.error('Forno di casa realtime:',error);}
+  },900);
+}
+function subscribeToUserData(userId){
+  if(realtimeChannel)supabaseClient.removeChannel(realtimeChannel);
+  let channel=supabaseClient.channel(`forno-user-${userId}`);
+  for(const table of ['ingredients','pizzas','pizza_ingredients','pizza_events','event_pizzas']){
+    channel=channel.on('postgres_changes',{event:'*',schema:'public',table,filter:`user_id=eq.${userId}`},refreshFromRealtime);
+  }
+  realtimeChannel=channel.subscribe();
+}
 async function handleAuthSession(session){
   const authScreen=$('#auth-screen');const appShell=$('#app-shell');
-  if(!session?.user){currentUser=null;loadedUserId=null;authScreen.hidden=false;appShell.hidden=true;return;}
+  if(!session?.user){currentUser=null;loadedUserId=null;if(realtimeChannel){supabaseClient.removeChannel(realtimeChannel);realtimeChannel=null;}authScreen.hidden=false;appShell.hidden=true;return;}
+  if(currentUser?.id&&currentUser.id!==session.user.id&&realtimeChannel){supabaseClient.removeChannel(realtimeChannel);realtimeChannel=null;loadedUserId=null;}
   currentUser=session.user;authScreen.hidden=true;appShell.hidden=false;$('.profile strong').textContent=session.user.email||'Il tuo ricettario';$('.profile small').textContent='Sincronizzazione attiva';
   if(loadedUserId===session.user.id)return;loadedUserId=session.user.id;setCloudStatus('Caricamento ricettario…');
-  try{await loadCloudState(session.user);render();setCloudStatus('Sincronizzato su Supabase');}
+  try{await loadCloudState(session.user);render();setCloudStatus('Sincronizzato su Supabase');subscribeToUserData(session.user.id);}
   catch(error){loadedUserId=null;console.error('Forno di casa load:',error);setCloudStatus('Connessione non riuscita');showToast('Non riesco a leggere il ricettario. Riprova tra poco.');}
 }
 async function initializeCloud(){
