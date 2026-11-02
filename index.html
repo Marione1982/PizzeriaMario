@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20261101-serata-liste" />
+    <link rel="stylesheet" href="styles.css?v=20261102-campi-serata" />
   </head>
   <body>
     <section class="auth-screen" id="auth-screen">
@@ -67,6 +67,13 @@
               <label class="field guests-field"><span>QUANTI A TAVOLA?</span><div class="input-wrap"><span class="input-icon">♧</span><input type="number" id="guests" min="1" max="99" value="4" /><span class="input-suffix">persone</span></div></label>
               <div class="guest-note"><span>✦</span> Lievitazione consigliata: <b>24 ore</b></div>
             </div>
+            <div class="event-details-grid">
+              <label class="field event-notes-field"><span>NOTE</span><textarea id="event-notes" rows="2" placeholder="Appunti per la serata…"></textarea></label>
+              <label class="field"><span>IMPASTO</span><div class="input-wrap"><input type="number" id="event-dough-weight" min="0" step="1" placeholder="Es. 1500" /><span class="input-suffix">g</span></div></label>
+              <label class="field"><span>IDRATAZIONE</span><div class="input-wrap"><input type="number" id="event-hydration" min="0" max="100" step="0.1" placeholder="Es. 65" /><span class="input-suffix">%</span></div></label>
+              <fieldset class="field panetti-field"><legend>PANETTI</legend><div class="panetti-inputs"><label><span>numero</span><input type="number" id="event-ball-count" min="0" step="1" placeholder="Es. 6" /></label><span class="panetti-times">×</span><label><span>grammi cad.</span><input type="number" id="event-ball-weight" min="0" step="1" placeholder="Es. 250" /></label></div></fieldset>
+              <label class="field"><span>MATURAZIONE</span><div class="input-wrap"><input type="number" id="event-maturation-hours" min="0" step="0.5" placeholder="Es. 24" /><span class="input-suffix">H</span></div></label>
+            </div>
           </div>
 
           <div class="menu-heading"><div><span class="section-kicker">02 — IL MENU</span><h2>Che cosa sforniamo?</h2><p>Scegli le pizze e indica quante te ne servono.</p></div><button class="text-button" data-go="pizze">Gestisci le pizze <span>↗</span></button></div>
@@ -118,6 +125,6 @@
     <div id="toast" class="toast" role="status"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0"></script>
     <script src="supabase-config.js"></script>
-    <script src="app.js?v=20261101-ordine-pizze"></script>
+    <script src="app.js?v=20261102-campi-serata"></script>
   </body>
 </html>
