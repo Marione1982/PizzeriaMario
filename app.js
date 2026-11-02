@@ -32,6 +32,9 @@ const labelUnit = unit => ({pz:'pezzi',g:'grammi',ml:'millilitri',qb:'quanto bas
 function saveLocal(){captureActiveEvent();localStorage.setItem(STORAGE_KEY,JSON.stringify(state));render();}
 function save(){saveLocal();if(currentUser)scheduleCloudSync();}
 function ingredientById(id){return state.ingredients.find(item=>item.id===id);}
+// Ordine di visualizzazione: prima il Pomodoro San Marzano, poi la mozzarella (fiordilatte o bufala), poi il resto nell'ordine della ricetta
+function ingredientPriority(name){const value=String(name).toLocaleLowerCase('it').trim();if(value.startsWith('pomodoro san marzano'))return 0;if(value.startsWith('mozzarella'))return 1;return 2;}
+function recipeIngredientNames(ids){return (ids||[]).map(id=>ingredientById(id)?.name).filter(Boolean).map((name,index)=>({name,index})).sort((a,b)=>ingredientPriority(a.name)-ingredientPriority(b.name)||a.index-b.index).map(item=>item.name);}
 function getMenuItems(source=state){
   return [...source.pizzas.filter(item=>item.count>0).map(item=>({id:item.id,name:item.name,quantity:item.count,kind:'pizza'})),...source.specials.filter(item=>item.count>0).map(item=>({id:item.id,name:item.name,quantity:item.count,kind:'preparazione'}))];
 }
@@ -52,12 +55,12 @@ function getShopping(source=state){
 function quantityLabel(item){if(item.unit==='pz'){const forItems=[];if(item.pizzaCount)forItems.push(`${item.pizzaCount} ${item.pizzaCount===1?'pizza':'pizze'}`);if(item.preparationCount)forItems.push(`${item.preparationCount} ${item.preparationCount===1?'preparazione':'preparazioni'}`);return `× ${item.quantity} ${item.quantity===1?'pezzo':'pezzi'} · per ${forItems.join(' + ')}`;}if(item.unit==='qb')return item.quantity===1?'q.b. × 1 preparazione':`q.b. × ${item.quantity} preparazioni`;const unitShort={g:' g',ml:' ml'}[item.unit]??` ${item.unit}`;return `× ${item.quantity}${unitShort}`;}
 function formatDate(value){if(!value)return 'La tua prossima serata';const d=new Date(`${value}T12:00:00`);return new Intl.DateTimeFormat('it-IT',{day:'numeric',month:'long',year:'numeric'}).format(d);}
 function pizzaCard(pizza,showQuantity=false){
-  const names=pizza.ingredients.map(id=>ingredientById(id)?.name).filter(Boolean);
+  const names=recipeIngredientNames(pizza.ingredients);
   const actions=showQuantity?'':`<div class="card-actions"><button class="card-menu edit-pizza" title="Modifica ${escapeHtml(pizza.name)}" aria-label="Modifica ${escapeHtml(pizza.name)}" data-edit-pizza="${escapeHtml(pizza.id)}">✎</button><button class="card-menu" title="Elimina ${escapeHtml(pizza.name)}" aria-label="Elimina ${escapeHtml(pizza.name)}" data-delete-pizza="${escapeHtml(pizza.id)}">×</button></div>`;
   return `<article class="pizza-card" data-pizza-card="${escapeHtml(pizza.id)}"><div class="card-top"><div><h3 class="pizza-name">${escapeHtml(pizza.name)}</h3><span class="pizza-kind"><i class="kind-dot ${pizza.type==='bianca'?'white':''}"></i>${pizza.type}</span></div>${actions}</div><p class="pizza-ingredients">${names.length?names.map(escapeHtml).join(' · '):'Nessun ingrediente selezionato'}</p>${pizza.notes?`<p class="pizza-notes"><strong>Note:</strong> ${escapeHtml(pizza.notes)}</p>`:''}<div class="card-bottom"><span class="portion-label">${showQuantity?'NEL MENU':'RICETTA'}</span>${showQuantity?`<div class="quantity-control"><button aria-label="Riduci ${escapeHtml(pizza.name)}" data-quantity="${escapeHtml(pizza.id)}" data-step="-1">−</button><span class="quantity">${pizza.count}</span><button aria-label="Aggiungi ${escapeHtml(pizza.name)}" data-quantity="${escapeHtml(pizza.id)}" data-step="1">+</button></div>`:`<span class="portion-label">${names.length} ${names.length===1?'ingrediente':'ingredienti'}</span>`}</div></article>`;
 }
 function specialCard(special,showQuantity=false){
-  const names=special.ingredients.map(id=>ingredientById(id)?.name).filter(Boolean);
+  const names=recipeIngredientNames(special.ingredients);
   const actions=showQuantity?'':`<div class="card-actions"><button class="card-menu edit-pizza" title="Modifica ${escapeHtml(special.name)}" aria-label="Modifica ${escapeHtml(special.name)}" data-edit-special="${escapeHtml(special.id)}">✎</button><button class="card-menu" title="Elimina ${escapeHtml(special.name)}" aria-label="Elimina ${escapeHtml(special.name)}" data-delete-special="${escapeHtml(special.id)}">×</button></div>`;
   return `<article class="pizza-card special-card"><div class="card-top"><div><h3 class="pizza-name">${escapeHtml(special.name)}</h3><span class="special-kind">PREPARAZIONE</span></div>${actions}</div><p class="pizza-ingredients">${names.length?names.map(escapeHtml).join(' · '):'Nessun ingrediente selezionato'}</p>${special.notes?`<p class="pizza-notes"><strong>Note:</strong> ${escapeHtml(special.notes)}</p>`:''}<div class="card-bottom"><span class="portion-label">${showQuantity?'NEL MENU':'PREPARAZIONE'}</span>${showQuantity?`<div class="quantity-control"><button aria-label="Riduci ${escapeHtml(special.name)}" data-special-quantity="${escapeHtml(special.id)}" data-step="-1">−</button><span class="quantity">${special.count}</span><button aria-label="Aggiungi ${escapeHtml(special.name)}" data-special-quantity="${escapeHtml(special.id)}" data-step="1">+</button></div>`:`<span class="portion-label">${names.length} ${names.length===1?'ingrediente':'ingredienti'}</span>`}</div></article>`;
 }
@@ -108,7 +111,7 @@ function showSavedEvent(eventId){
   const specials=(event.special_menu||[]).filter(item=>Number(item.quantity)>0).map(item=>({kind:'speciale',item:state.specials.find(row=>row.id===item.special_id),quantity:Number(item.quantity)||0})).filter(row=>row.item);
   const number=value=>value==null||value===''?'—':Number(value).toLocaleString('it-IT');
   const renderCommandItems=items=>items.map(({kind,item,quantity})=>{
-    const recipeIngredients=(item.ingredients||[]).map(id=>ingredientById(id)?.name).filter(Boolean);
+    const recipeIngredients=recipeIngredientNames(item.ingredients);
     const details=[kind==='pizza'?(item.type==='bianca'?'Pizza bianca':'Pizza rossa'):'Preparazione',recipeIngredients.length?recipeIngredients.map(escapeHtml).join(' · '):'',item.notes?'Note: '+escapeHtml(item.notes):''].filter(Boolean);
     return '<li class="command-item"><div><strong>'+escapeHtml(item.name)+'</strong><span class="command-quantity">× '+quantity+'</span></div><small>'+details.join(' · ')+'</small></li>';
   }).join('');
