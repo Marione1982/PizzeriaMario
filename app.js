@@ -93,8 +93,29 @@ function renderSavedEvents(){
     const menu=[...(event.menu||[]).filter(item=>Number(item.quantity)>0).map(item=>{const pizza=state.pizzas.find(p=>p.id===item.pizza_id);return pizza?escapeHtml(pizza.name)+' ×'+item.quantity:null;}),...(event.special_menu||[]).filter(item=>Number(item.quantity)>0).map(item=>{const special=state.specials.find(row=>row.id===item.special_id);return special?escapeHtml(special.name)+' ×'+item.quantity:null;})].filter(Boolean);
     const date=event.event_date?formatDate(event.event_date):'Data da definire';
     const guests=Number(event.guest_count)||4;
-    return '<article class="saved-event-row '+(event.id===state.activeEventId?'active':'')+'"><div class="saved-event-copy"><strong>'+escapeHtml(date)+'</strong><small>'+guests+' '+(guests===1?'ospite':'ospiti')+' · '+(menu.length?menu.join(' · '):'Nessuna preparazione selezionata')+'</small></div><div class="event-row-actions"><button class="event-open-button" data-open-event="'+escapeHtml(event.id)+'">'+(event.id===state.activeEventId?'In modifica':'Apri')+'</button><button class="event-delete-button" data-delete-event="'+escapeHtml(event.id)+'" title="Elimina serata" aria-label="Elimina serata del '+escapeHtml(date)+'">Elimina</button></div></article>';
+    return '<article class="saved-event-row '+(event.id===state.activeEventId?'active':'')+'"><div class="saved-event-copy"><strong>'+escapeHtml(date)+'</strong><small>'+guests+' '+(guests===1?'ospite':'ospiti')+' · '+(menu.length?menu.join(' · '):'Nessuna preparazione selezionata')+'</small></div><div class="event-row-actions"><button class="event-open-button" data-open-event="'+escapeHtml(event.id)+'">Apri</button><button class="event-edit-button" data-edit-event="'+escapeHtml(event.id)+'">Modifica</button><button class="event-delete-button" data-delete-event="'+escapeHtml(event.id)+'" title="Elimina serata" aria-label="Elimina serata del '+escapeHtml(date)+'">Elimina</button></div></article>';
   }).join(''):'<div class="saved-events-empty">Le serate che salvi appariranno qui, con la data e le pizze scelte.</div>';
+}
+function showSavedEvent(eventId){
+  const event=state.events.find(item=>item.id===eventId);if(!event)return;
+  const pizzas=(event.menu||[]).filter(item=>Number(item.quantity)>0).map(item=>({kind:'pizza',item:state.pizzas.find(row=>row.id===item.pizza_id),quantity:Number(item.quantity)||0})).filter(row=>row.item);
+  const specials=(event.special_menu||[]).filter(item=>Number(item.quantity)>0).map(item=>({kind:'speciale',item:state.specials.find(row=>row.id===item.special_id),quantity:Number(item.quantity)||0})).filter(row=>row.item);
+  const number=value=>value==null||value===''?'—':Number(value).toLocaleString('it-IT');
+  const commandItems=[...pizzas,...specials].map(({kind,item,quantity})=>{
+    const recipeIngredients=(item.ingredients||[]).map(id=>ingredientById(id)?.name).filter(Boolean);
+    const details=[kind==='pizza'?(item.type==='bianca'?'Pizza bianca':'Pizza rossa'):'Preparazione',recipeIngredients.length?recipeIngredients.map(escapeHtml).join(' · '):'',item.notes?'Note: '+escapeHtml(item.notes):''].filter(Boolean);
+    return '<li class="command-item"><div><strong>'+escapeHtml(item.name)+'</strong><span class="command-quantity">× '+quantity+'</span></div><small>'+details.join(' · ')+'</small></li>';
+  }).join('');
+  const doughDetails=[
+    ['Impasto',event.dough_weight_g==null?'—':number(event.dough_weight_g)+' g'],
+    ['Idratazione',event.hydration_percent==null?'—':number(event.hydration_percent)+'%'],
+    ['Panetti',event.ball_count==null&&event.ball_weight_g==null?'—':(event.ball_count==null?'—':number(event.ball_count))+' × '+(event.ball_weight_g==null?'—':number(event.ball_weight_g)+' g')],
+    ['Maturazione',event.maturation_hours==null?'—':number(event.maturation_hours)+' H']
+  ].map(([label,value])=>'<div class="command-detail"><span>'+label+'</span><strong>'+value+'</strong></div>').join('');
+  $('#command-title').textContent=event.event_date?formatDate(event.event_date):'Data da definire';
+  $('#command-body').innerHTML='<div class="command-meta"><div class="command-detail"><span>Partecipanti</span><strong>'+number(event.guest_count||4)+'</strong></div><div class="command-detail"><span>Note della serata</span><strong class="command-note">'+(event.event_notes?escapeHtml(event.event_notes):'Nessuna nota')+'</strong></div>'+doughDetails+'</div><section class="command-menu"><div class="command-section-title"><span>COMANDA</span><strong>'+pizzas.reduce((total,row)=>total+row.quantity,0)+' pizze · '+specials.reduce((total,row)=>total+row.quantity,0)+' speciali</strong></div>'+(commandItems?'<ul>'+commandItems+'</ul>':'<p class="command-empty">Nessuna pizza o preparazione selezionata.</p>')+'</section>';
+  $('#command-edit-button').dataset.editEvent=event.id;
+  $('#command-dialog').showModal();
 }
 function openSavedEvent(eventId){
   const event=state.events.find(item=>item.id===eventId);if(!event)return;
@@ -140,7 +161,7 @@ async function saveCurrentEvent(){
   const button=$('#save-event-btn');button.disabled=true;setCloudStatus('Salvataggio serata…');
   const userId=currentUser.id;
   cloudSyncChain=cloudSyncChain.catch(()=>{}).then(()=>syncCloudSnapshot(userId));
-  try{await cloudSyncChain;if(currentUser?.id===userId){setCloudStatus('Sincronizzato su Supabase');showToast(isNew?'Serata salvata nel calendario!':'Serata aggiornata!');}}
+  try{await cloudSyncChain;if(currentUser?.id===userId){state.activeEventId=null;saveLocal();setCloudStatus('Sincronizzato su Supabase');showToast(isNew?'Serata salvata nel calendario!':'Serata aggiornata!');}}
   catch(error){console.error('Forno di casa save event:',error);if(currentUser?.id===userId){setCloudStatus('Salvataggio non riuscito');showToast('Non riesco a salvare la serata. Riprova tra poco.');}}
   finally{button.disabled=false;render();}
 }
@@ -223,7 +244,7 @@ async function loadCloudState(user){
   const local=state;const previousActiveId=state.activeEventId;
   const events=eventRows.map(row=>({...row,menu:eventPizzas.filter(item=>item.event_id===row.id).map(item=>({pizza_id:item.pizza_id,quantity:Number(item.quantity)||0})),special_menu:eventSpecials.filter(item=>item.event_id===row.id).map(item=>({special_id:item.special_id,quantity:Number(item.quantity)||0}))}));
   events.sort((a,b)=>(b.event_date||'').localeCompare(a.event_date||'')||(b.updated_at||'').localeCompare(a.updated_at||''));
-  const active=events.find(event=>event.id===previousActiveId)||events[0]||null;
+  const active=events.find(event=>event.id===previousActiveId)||null;
   const quantities=new Map((active?.menu||[]).map(item=>[item.pizza_id,item.quantity]));
   const localQuantities=new Map(local.pizzas.map(pizza=>[pizza.id,pizza.count||0]));const localSpecialQuantities=new Map((local.specials||[]).map(item=>[item.id,item.count||0]));
   state={events,activeEventId:active?.id||null,eventDate:active?.event_date||(!events.length?(local.eventDate||''):''),guests:active?.guest_count||(!events.length?(local.guests||4):4),eventNotes:active?.event_notes??(!events.length?(local.eventNotes||''):''),doughWeight:active?.dough_weight_g??(!events.length?(local.doughWeight??null):null),hydration:active?.hydration_percent??(!events.length?(local.hydration??null):null),ballCount:active?.ball_count??(!events.length?(local.ballCount??null):null),ballWeight:active?.ball_weight_g??(!events.length?(local.ballWeight??null):null),maturationHours:active?.maturation_hours??(!events.length?(local.maturationHours??null):null),
@@ -317,9 +338,11 @@ document.addEventListener('click',event=>{
   if(event.target.closest('#save-event-btn')){saveCurrentEvent();return;}
   if(event.target.closest('#new-event-btn')){startNewEvent();return;}
   const deleteEvent=event.target.closest('[data-delete-event]');if(deleteEvent){deleteSavedEvent(deleteEvent.dataset.deleteEvent);return;}
-  const openEvent=event.target.closest('[data-open-event]');if(openEvent){openSavedEvent(openEvent.dataset.openEvent);return;}
+  const openEvent=event.target.closest('[data-open-event]');if(openEvent){showSavedEvent(openEvent.dataset.openEvent);return;}
+  const editEvent=event.target.closest('[data-edit-event]');if(editEvent){openSavedEvent(editEvent.dataset.editEvent);navigate('serata');$('#planning-card').scrollIntoView({behavior:'smooth',block:'start'});return;}
   const day=event.target.closest('[data-calendar-date]');if(day){state.eventDate=day.dataset.calendarDate;save();$('#calendar-dialog').close();return;}
   const close=event.target.closest('[data-close]');if(close){close.closest('dialog').close();return;}
+  if(event.target.closest('#command-edit-button')){const id=event.target.closest('#command-edit-button').dataset.editEvent;$('#command-dialog').close();openSavedEvent(id);navigate('serata');$('#planning-card').scrollIntoView({behavior:'smooth',block:'start'});return;}
   const qty=event.target.closest('[data-quantity]');if(qty){const pizza=state.pizzas.find(p=>p.id===qty.dataset.quantity);pizza.count=Math.max(0,Math.min(99,pizza.count+Number(qty.dataset.step)));save();return;}
   const specialQty=event.target.closest('[data-special-quantity]');if(specialQty){const item=state.specials.find(row=>row.id===specialQty.dataset.specialQuantity);item.count=Math.max(0,Math.min(99,item.count+Number(specialQty.dataset.step)));save();return;}
   const editPizza=event.target.closest('[data-edit-pizza]');if(editPizza){openPizzaDialog(editPizza.dataset.editPizza);return;}
