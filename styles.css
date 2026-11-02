@@ -104,3 +104,6 @@
   .pizza-ingredients{font-size:13px}.shopping-name{font-size:14px}
   .event-row-actions button{min-height:40px;font-size:13px;padding:8px 14px}
 }
+.dialog-shop-check{align-items:center;gap:10px;cursor:pointer}.dialog-shop-check>span{flex:1}.dialog-shop-check.checked>span{color:#aaa89b;text-decoration:line-through}
+.event-row-actions{flex-wrap:wrap}
+@media(max-width:980px){.dialog-shopping-list{max-height:58vh}}

@@ -32,17 +32,21 @@ const labelUnit = unit => ({pz:'pezzi',g:'grammi',ml:'millilitri',qb:'quanto bas
 function saveLocal(){captureActiveEvent();localStorage.setItem(STORAGE_KEY,JSON.stringify(state));render();}
 function save(){saveLocal();if(currentUser)scheduleCloudSync();}
 function ingredientById(id){return state.ingredients.find(item=>item.id===id);}
-function getMenuItems(){
-  return [...state.pizzas.filter(item=>item.count>0).map(item=>({id:item.id,name:item.name,quantity:item.count,kind:'pizza'})),...state.specials.filter(item=>item.count>0).map(item=>({id:item.id,name:item.name,quantity:item.count,kind:'preparazione'}))];
+function getMenuItems(source=state){
+  return [...source.pizzas.filter(item=>item.count>0).map(item=>({id:item.id,name:item.name,quantity:item.count,kind:'pizza'})),...source.specials.filter(item=>item.count>0).map(item=>({id:item.id,name:item.name,quantity:item.count,kind:'preparazione'}))];
 }
-function getShopping(){
+function eventSource(event){
+  const pizzaQty=new Map((event.menu||[]).map(item=>[item.pizza_id,Number(item.quantity)||0]));const specialQty=new Map((event.special_menu||[]).map(item=>[item.special_id,Number(item.quantity)||0]));
+  return {pizzas:state.pizzas.map(item=>({...item,count:pizzaQty.get(item.id)||0})),specials:state.specials.map(item=>({...item,count:specialQty.get(item.id)||0}))};
+}
+function getShopping(source=state){
   const totals=new Map();
   const addRecipes=(recipes,countKey)=>recipes.filter(item=>item.count>0).forEach(item=>item.ingredients.forEach(id=>{
     const ingredient=ingredientById(id);if(!ingredient)return;
     const current=totals.get(id)||{name:ingredient.name,unit:ingredient.unit,quantity:0,pizzaCount:0,preparationCount:0};
     current.quantity+=item.count;current[countKey]+=item.count;totals.set(id,current);
   }));
-  addRecipes(state.pizzas,'pizzaCount');addRecipes(state.specials,'preparationCount');
+  addRecipes(source.pizzas,'pizzaCount');addRecipes(source.specials,'preparationCount');
   return [...totals.entries()].sort((a,b)=>a[1].name.localeCompare(b[1].name,'it')).map(([id,item])=>({id,...item}));
 }
 function quantityLabel(item){if(item.unit==='pz'){const forItems=[];if(item.pizzaCount)forItems.push(`${item.pizzaCount} ${item.pizzaCount===1?'pizza':'pizze'}`);if(item.preparationCount)forItems.push(`${item.preparationCount} ${item.preparationCount===1?'preparazione':'preparazioni'}`);return `× ${item.quantity} ${item.quantity===1?'pezzo':'pezzi'} · per ${forItems.join(' + ')}`;}if(item.unit==='qb')return item.quantity===1?'q.b. × 1 preparazione':`q.b. × ${item.quantity} preparazioni`;const unitShort={g:' g',ml:' ml'}[item.unit]??` ${item.unit}`;return `× ${item.quantity}${unitShort}`;}
@@ -95,7 +99,7 @@ function renderSavedEvents(){
     const menu=[...(event.menu||[]).filter(item=>Number(item.quantity)>0).map(item=>{const pizza=state.pizzas.find(p=>p.id===item.pizza_id);return pizza?escapeHtml(pizza.name)+' ×'+item.quantity:null;}),...(event.special_menu||[]).filter(item=>Number(item.quantity)>0).map(item=>{const special=state.specials.find(row=>row.id===item.special_id);return special?escapeHtml(special.name)+' ×'+item.quantity:null;})].filter(Boolean);
     const date=event.event_date?formatDate(event.event_date):'Data da definire';
     const guests=Number(event.guest_count)||4;
-    return '<article class="saved-event-row '+(event.id===state.activeEventId?'active':'')+'"><div class="saved-event-copy"><strong>'+escapeHtml(date)+'</strong><small>'+guests+' '+(guests===1?'ospite':'ospiti')+' · '+(menu.length?menu.join(' · '):'Nessuna preparazione selezionata')+'</small></div><div class="event-row-actions"><button class="event-open-button" data-open-event="'+escapeHtml(event.id)+'">Apri</button><button class="event-edit-button" data-edit-event="'+escapeHtml(event.id)+'">Modifica</button><button class="event-delete-button" data-delete-event="'+escapeHtml(event.id)+'" title="Elimina serata" aria-label="Elimina serata del '+escapeHtml(date)+'">Elimina</button></div></article>';
+    return '<article class="saved-event-row '+(event.id===state.activeEventId?'active':'')+'"><div class="saved-event-copy"><strong>'+escapeHtml(date)+'</strong><small>'+guests+' '+(guests===1?'ospite':'ospiti')+' · '+(menu.length?menu.join(' · '):'Nessuna preparazione selezionata')+'</small></div><div class="event-row-actions"><button class="event-open-button" data-open-event="'+escapeHtml(event.id)+'">Apri</button><button class="event-open-button event-shop-button" data-shop-event="'+escapeHtml(event.id)+'" aria-label="Lista della spesa della serata del '+escapeHtml(date)+'">Spesa</button><button class="event-edit-button" data-edit-event="'+escapeHtml(event.id)+'">Modifica</button><button class="event-delete-button" data-delete-event="'+escapeHtml(event.id)+'" title="Elimina serata" aria-label="Elimina serata del '+escapeHtml(date)+'">Elimina</button></div></article>';
   }).join(''):'<div class="saved-events-empty">Le serate che salvi appariranno qui, con la data e le pizze scelte.</div>';
 }
 function showSavedEvent(eventId){
@@ -227,12 +231,29 @@ function renderCalendar(){
   $('#calendar-days').innerHTML=blanks+days;
 }
 
-async function copyShopping(){const list=getShopping(),menuItems=getMenuItems();if(!list.length&&!menuItems.length)return;const date=formatDate(state.eventDate);const menuText=menuItems.length?`PIZZE E PREPARAZIONI\n${menuItems.map(item=>`• ${item.name} × ${item.quantity}`).join('\n')}`:'PIZZE E PREPARAZIONI\nNessuna selezionata';const ingredientText=list.length?`INGREDIENTI\n${list.map(item=>`☐ ${item.name} ${quantityLabel(item)}`).join('\n')}`:'INGREDIENTI\nNessun ingrediente necessario';const text=`LISTA DELLA SERATA — ${date}\n\n${menuText}\n\n${ingredientText}`;try{await navigator.clipboard.writeText(text);showToast('Lista della serata copiata!');}catch{showToast('Il browser non consente di copiare la lista.');}}
+async function copyShopping(source=state,date=formatDate(state.eventDate)){const list=getShopping(source),menuItems=getMenuItems(source);if(!list.length&&!menuItems.length)return;const menuText=menuItems.length?`PIZZE E PREPARAZIONI\n${menuItems.map(item=>`• ${item.name} × ${item.quantity}`).join('\n')}`:'PIZZE E PREPARAZIONI\nNessuna selezionata';const ingredientText=list.length?`INGREDIENTI\n${list.map(item=>`☐ ${item.name} ${quantityLabel(item)}`).join('\n')}`:'INGREDIENTI\nNessun ingrediente necessario';const text=`LISTA DELLA SERATA — ${date}\n\n${menuText}\n\n${ingredientText}`;try{await navigator.clipboard.writeText(text);showToast('Lista della serata copiata!');}catch{showToast('Il browser non consente di copiare la lista.');}}
+let shoppingDialogEventId=null;
 function renderShoppingDialog(){
-  const menuItems=getMenuItems(),ingredients=getShopping();
-  $('#dialog-shopping-list').innerHTML=`<section class="dialog-list-section"><h3>Pizze e preparazioni</h3>${menuItems.length?menuItems.map(item=>`<div class="dialog-shop-item"><span>${escapeHtml(item.name)} <small>${item.kind==='pizza'?'Pizza':'Preparazione'}</small></span><strong>× ${item.quantity}</strong></div>`).join(''):'<p class="dialog-list-empty">Nessuna selezionata.</p>'}</section><section class="dialog-list-section"><h3>Ingredienti</h3>${ingredients.length?ingredients.map(item=>`<div class="dialog-shop-item"><span>${escapeHtml(item.name)}</span><strong>${quantityLabel(item)}</strong></div>`).join(''):'<p class="dialog-list-empty">Nessun ingrediente necessario.</p>'}</section>`;
+  const savedEvent=shoppingDialogEventId?state.events.find(item=>item.id===shoppingDialogEventId):null;const source=savedEvent?eventSource(savedEvent):state;const checked=new Set(savedEvent?.checked_ingredients||[]);
+  const menuItems=getMenuItems(source),ingredients=getShopping(source);
+  $('#dialog-shopping-list').innerHTML=`<section class="dialog-list-section"><h3>Pizze e preparazioni</h3>${menuItems.length?menuItems.map(item=>`<div class="dialog-shop-item"><span>${escapeHtml(item.name)} <small>${item.kind==='pizza'?'Pizza':'Preparazione'}</small></span><strong>× ${item.quantity}</strong></div>`).join(''):'<p class="dialog-list-empty">Nessuna selezionata.</p>'}</section><section class="dialog-list-section"><h3>Ingredienti</h3>${ingredients.length?ingredients.map(item=>savedEvent?`<label class="dialog-shop-item dialog-shop-check ${checked.has(item.id)?'checked':''}"><input class="shopping-check" type="checkbox" data-event-check="${escapeHtml(item.id)}" ${checked.has(item.id)?'checked':''} /><span>${escapeHtml(item.name)}</span><strong>${quantityLabel(item)}</strong></label>`:`<div class="dialog-shop-item"><span>${escapeHtml(item.name)}</span><strong>${quantityLabel(item)}</strong></div>`).join(''):'<p class="dialog-list-empty">Nessun ingrediente necessario.</p>'}</section>`;
 }
 
+function openEventShopping(eventId){
+  const event=state.events.find(item=>item.id===eventId);if(!event)return;
+  shoppingDialogEventId=event.id;const guests=Number(event.guest_count)||4;
+  $('#dialog-event-date').textContent=`${event.event_date?formatDate(event.event_date):'Data da definire'} · ${guests} ${guests===1?'persona':'persone'}`;
+  renderShoppingDialog();$('#shopping-dialog').showModal();
+}
+async function toggleEventCheck(ingredientId,isChecked){
+  const event=state.events.find(item=>item.id===shoppingDialogEventId);if(!event)return;
+  const current=new Set(event.checked_ingredients||[]);if(isChecked)current.add(ingredientId);else current.delete(ingredientId);
+  event.checked_ingredients=[...current];if(state.activeEventId===event.id)state.checked=[...current];
+  renderShoppingDialog();localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+  const userId=currentUser?.id;if(!userId)return;
+  try{requireCloud(await supabaseClient.from('pizza_events').update({checked_ingredients:event.checked_ingredients,updated_at:new Date().toISOString()}).eq('user_id',userId).eq('id',event.id));}
+  catch(error){console.error('Forno di casa check:',error);showToast('Non riesco a salvare la spunta. Riprova tra poco.');}
+}
 function setCloudStatus(message){const status=$('.saved-status');if(status)status.innerHTML=`<i></i> ${escapeHtml(message)}`;}
 function requireCloud(result){if(result.error)throw result.error;return result.data;}
 async function loadCloudState(user){
@@ -347,6 +368,7 @@ document.addEventListener('click',event=>{
   if(event.target.closest('#save-event-btn')){saveCurrentEvent();return;}
   if(event.target.closest('#new-event-btn')){startNewEvent();return;}
   const deleteEvent=event.target.closest('[data-delete-event]');if(deleteEvent){deleteSavedEvent(deleteEvent.dataset.deleteEvent);return;}
+  const shopEvent=event.target.closest('[data-shop-event]');if(shopEvent){openEventShopping(shopEvent.dataset.shopEvent);return;}
   const openEvent=event.target.closest('[data-open-event]');if(openEvent){showSavedEvent(openEvent.dataset.openEvent);return;}
   const editEvent=event.target.closest('[data-edit-event]');if(editEvent){openSavedEvent(editEvent.dataset.editEvent);navigate('serata');$('#planning-card').scrollIntoView({behavior:'smooth',block:'start'});return;}
   const day=event.target.closest('[data-calendar-date]');if(day){state.eventDate=day.dataset.calendarDate;save();$('#calendar-dialog').close();return;}
@@ -363,8 +385,8 @@ document.addEventListener('click',event=>{
   if(event.target.id==='new-pizza-btn'||event.target.id==='empty-new-pizza'){openPizzaDialog();return;}
   if(event.target.id==='new-special-btn'||event.target.id==='empty-new-special'){openSpecialDialog();return;}
   if(event.target.id==='new-ingredient-btn'){openIngredientDialog();return;}
-  if(event.target.id==='copy-list-btn'){const date=formatDate(state.eventDate);$('#dialog-event-date').textContent=`${date} · ${state.guests||4} ${(state.guests||4)===1?'persona':'persone'}`;renderShoppingDialog();$('#shopping-dialog').showModal();return;}
-  if(event.target.closest('#dialog-copy-btn')){copyShopping();$('#shopping-dialog').close();return;}
+  if(event.target.id==='copy-list-btn'){shoppingDialogEventId=null;const date=formatDate(state.eventDate);$('#dialog-event-date').textContent=`${date} · ${state.guests||4} ${(state.guests||4)===1?'persona':'persone'}`;renderShoppingDialog();$('#shopping-dialog').showModal();return;}
+  if(event.target.closest('#dialog-copy-btn')){const savedEvent=shoppingDialogEventId?state.events.find(item=>item.id===shoppingDialogEventId):null;if(savedEvent)copyShopping(eventSource(savedEvent),savedEvent.event_date?formatDate(savedEvent.event_date):'Data da definire');else copyShopping();$('#shopping-dialog').close();return;}
   if(event.target.id==='help-btn'){showToast('Scegli pizze e speciali, imposta le quantità e la lista si aggiorna da sola.');return;}
 });
 document.addEventListener('change',event=>{
@@ -372,6 +394,7 @@ document.addEventListener('change',event=>{
   if(event.target.id==='guests'){state.guests=Math.max(1,Math.min(99,Number(event.target.value)||1));save();}
   const eventFields={'event-notes':'eventNotes','event-dough-weight':'doughWeight','event-hydration':'hydration','event-ball-count':'ballCount','event-ball-weight':'ballWeight','event-maturation-hours':'maturationHours'};
   if(eventFields[event.target.id]){const field=eventFields[event.target.id];state[field]=event.target.value===''?(field==='eventNotes'?'':null):(field==='eventNotes'?event.target.value:Number(event.target.value));save();}
+  if(event.target.matches('[data-event-check]')){toggleEventCheck(event.target.dataset.eventCheck,event.target.checked);return;}
   if(event.target.matches('[data-check]')){const id=event.target.dataset.check;state.checked=event.target.checked?[...new Set([...state.checked,id])]:state.checked.filter(value=>value!==id);save();}
 });
 $('#pizza-filters').addEventListener('click',event=>{const chip=event.target.closest('[data-filter]');if(!chip)return;currentFilter=chip.dataset.filter;$$('.filter-chip').forEach(item=>item.classList.toggle('selected',item===chip));render();});
