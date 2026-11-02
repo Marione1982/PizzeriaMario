@@ -21,6 +21,8 @@ const seed = {
 let state;
 try { state = JSON.parse(localStorage.getItem(STORAGE_KEY)) || structuredClone(seed); } catch { state = structuredClone(seed); }
 state.pizzas ||= []; state.specials ||= []; state.ingredients ||= []; state.checked ||= []; state.events ||= []; state.activeEventId ||= null; state.eventNotes ||= ''; state.doughWeight ??= null; state.hydration ??= null; state.ballCount ??= null; state.ballWeight ??= null; state.maturationHours ??= null;
+if(state.activeEventId&&state.events.some(event=>event.id===state.activeEventId)){state.eventDate='';state.guests=4;state.eventNotes='';state.doughWeight=null;state.hydration=null;state.ballCount=null;state.ballWeight=null;state.maturationHours=null;state.checked=[];state.pizzas.forEach(item=>item.count=0);state.specials.forEach(item=>item.count=0);}
+state.activeEventId=null;
 let currentFilter = 'tutte'; let toastTimer; let editingPizzaId=null; let editingSpecialId=null; let editingIngredientId=null; let calendarViewDate=new Date(); let authMode='signin';
 let supabaseClient = null; let currentUser = null; let loadedUserId = null; let cloudSyncTimer; let realtimeReloadTimer; let realtimeChannel = null; let cloudSyncChain = Promise.resolve();
 const $ = (selector, root=document) => root.querySelector(selector);
