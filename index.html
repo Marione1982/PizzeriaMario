@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20261102-campi-serata" />
+    <link rel="stylesheet" href="styles.css?v=20261102-comanda" />
   </head>
   <body>
     <section class="auth-screen" id="auth-screen">
@@ -60,7 +60,7 @@
             <div class="hero-stamp"><span>FATTO CON</span><b>♥</b><span>E FARINA</span></div>
           </div>
 
-          <div class="planning-card">
+          <div class="planning-card" id="planning-card">
             <div class="planning-heading"><div><span class="section-kicker">01 — ORGANIZZIAMO</span><h2>La tua serata</h2></div><span class="step-chip">PIANIFICAZIONE</span></div>
             <div class="planning-fields">
               <label class="field date-field"><span>QUANDO SI IMPASTA?</span><div class="input-wrap"><button type="button" class="calendar-trigger" id="calendar-trigger"><span class="input-icon">▦</span><span id="event-date-label">Seleziona una data</span><span class="calendar-chevron">⌄</span></button><input type="hidden" id="event-date" /></div></label>
@@ -122,9 +122,17 @@
     <dialog id="ingredient-dialog" class="modal small-modal"><form id="ingredient-form"><input type="hidden" id="ingredient-id" /><div class="modal-top"><div><span class="section-kicker">LA DISPENSA</span><h2 id="ingredient-dialog-title">Un nuovo ingrediente<span class="period">.</span></h2></div><button type="button" class="close-button" data-close>×</button></div><label class="field"><span>NOME INGREDIENTE</span><input id="ingredient-name" class="plain-input" placeholder="Es. Mozzarella fiordilatte" required maxlength="60" /></label><button class="primary-button modal-submit" id="ingredient-save-button" type="submit">Aggiungi alla dispensa <span>↗</span></button></form></dialog>
     <dialog id="shopping-dialog" class="modal shopping-modal"><div class="modal-top"><div><span class="section-kicker">IL MENU È PRONTO</span><h2>La lista della spesa<span class="period">.</span></h2></div><button type="button" class="close-button" data-close>×</button></div><p class="shopping-dialog-date" id="dialog-event-date"></p><div id="dialog-shopping-list" class="dialog-shopping-list"></div><button class="primary-button modal-submit" id="dialog-copy-btn"><span>↗</span> Copia lista</button></dialog>
     <dialog id="password-reset-dialog" class="modal small-modal"><form id="password-reset-form"><div class="modal-top"><div><span class="section-kicker">IL TUO ACCOUNT</span><h2>Imposta una nuova password<span class="period">.</span></h2></div><button type="button" class="close-button" data-close>×</button></div><label class="field"><span>NUOVA PASSWORD</span><input id="reset-password" class="plain-input" type="password" autocomplete="new-password" minlength="6" required /></label><label class="field"><span>CONFERMA PASSWORD</span><input id="reset-password-confirm" class="plain-input" type="password" autocomplete="new-password" minlength="6" required /></label><p class="auth-message" id="password-reset-message" role="status"></p><button class="primary-button modal-submit" type="submit">Salva la password <span>↗</span></button></form></dialog>
+    <dialog id="command-dialog" class="command-dialog">
+      <div class="command-paper">
+        <div class="command-top"><span>♨ COMANDA · PIZZA NIGHT</span><button type="button" class="close-button" data-close aria-label="Chiudi comanda">×</button></div>
+        <div class="command-heading"><span>ORDINE PER</span><h2 id="command-title">Data della serata</h2></div>
+        <div id="command-body"></div>
+        <div class="command-actions"><button type="button" class="text-button" data-close>Chiudi</button><button type="button" class="primary-button" id="command-edit-button">Modifica serata <span>↗</span></button></div>
+      </div>
+    </dialog>
     <div id="toast" class="toast" role="status"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0"></script>
     <script src="supabase-config.js"></script>
-    <script src="app.js?v=20261102-campi-serata"></script>
+    <script src="app.js?v=20261102-comanda"></script>
   </body>
 </html>
