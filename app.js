@@ -103,11 +103,14 @@ function showSavedEvent(eventId){
   const pizzas=(event.menu||[]).filter(item=>Number(item.quantity)>0).map(item=>({kind:'pizza',item:state.pizzas.find(row=>row.id===item.pizza_id),quantity:Number(item.quantity)||0})).filter(row=>row.item);
   const specials=(event.special_menu||[]).filter(item=>Number(item.quantity)>0).map(item=>({kind:'speciale',item:state.specials.find(row=>row.id===item.special_id),quantity:Number(item.quantity)||0})).filter(row=>row.item);
   const number=value=>value==null||value===''?'—':Number(value).toLocaleString('it-IT');
-  const commandItems=[...pizzas,...specials].map(({kind,item,quantity})=>{
+  const renderCommandItems=items=>items.map(({kind,item,quantity})=>{
     const recipeIngredients=(item.ingredients||[]).map(id=>ingredientById(id)?.name).filter(Boolean);
     const details=[kind==='pizza'?(item.type==='bianca'?'Pizza bianca':'Pizza rossa'):'Preparazione',recipeIngredients.length?recipeIngredients.map(escapeHtml).join(' · '):'',item.notes?'Note: '+escapeHtml(item.notes):''].filter(Boolean);
     return '<li class="command-item"><div><strong>'+escapeHtml(item.name)+'</strong><span class="command-quantity">× '+quantity+'</span></div><small>'+details.join(' · ')+'</small></li>';
   }).join('');
+  const specialItems=specials.length?'<div class="command-group-heading special-group-heading">✦ PREPARAZIONI SPECIALI</div><ul>'+renderCommandItems(specials)+'</ul>':'';
+  const pizzaItems=pizzas.length?(specials.length?'<div class="command-separator" role="separator"><span>INIZIO PIZZE</span></div>':'')+'<div class="command-group-heading pizza-group-heading">◉ LE PIZZE</div><ul>'+renderCommandItems(pizzas)+'</ul>':'';
+  const menuItems=specialItems+pizzaItems||'<p class="command-empty">Nessuna pizza o preparazione selezionata.</p>';
   const doughDetails=[
     ['Impasto',event.dough_weight_g==null?'—':number(event.dough_weight_g)+' g'],
     ['Idratazione',event.hydration_percent==null?'—':number(event.hydration_percent)+'%'],
@@ -115,7 +118,7 @@ function showSavedEvent(eventId){
     ['Maturazione',event.maturation_hours==null?'—':number(event.maturation_hours)+' H']
   ].map(([label,value])=>'<div class="command-detail"><span>'+label+'</span><strong>'+value+'</strong></div>').join('');
   $('#command-title').textContent=event.event_date?formatDate(event.event_date):'Data da definire';
-  $('#command-body').innerHTML='<div class="command-meta"><div class="command-detail"><span>Partecipanti</span><strong>'+number(event.guest_count||4)+'</strong></div><div class="command-detail"><span>Note della serata</span><strong class="command-note">'+(event.event_notes?escapeHtml(event.event_notes):'Nessuna nota')+'</strong></div>'+doughDetails+'</div><section class="command-menu"><div class="command-section-title"><span>COMANDA</span><strong>'+pizzas.reduce((total,row)=>total+row.quantity,0)+' pizze · '+specials.reduce((total,row)=>total+row.quantity,0)+' speciali</strong></div>'+(commandItems?'<ul>'+commandItems+'</ul>':'<p class="command-empty">Nessuna pizza o preparazione selezionata.</p>')+'</section>';
+  $('#command-body').innerHTML='<div class="command-meta"><div class="command-detail"><span>Partecipanti</span><strong>'+number(event.guest_count||4)+'</strong></div><div class="command-detail"><span>Note della serata</span><strong class="command-note">'+(event.event_notes?escapeHtml(event.event_notes):'Nessuna nota')+'</strong></div>'+doughDetails+'</div><section class="command-menu"><div class="command-section-title"><span>COMANDA</span><strong>'+pizzas.reduce((total,row)=>total+row.quantity,0)+' pizze · '+specials.reduce((total,row)=>total+row.quantity,0)+' speciali</strong></div>'+menuItems+'</section>';
   $('#command-edit-button').dataset.editEvent=event.id;
   $('#command-dialog').showModal();
 }
