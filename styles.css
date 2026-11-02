@@ -107,3 +107,5 @@
 .dialog-shop-check{align-items:center;gap:10px;cursor:pointer}.dialog-shop-check>span{flex:1}.dialog-shop-check.checked>span{color:#aaa89b;text-decoration:line-through}
 .event-row-actions{flex-wrap:wrap}
 @media(max-width:980px){.dialog-shopping-list{max-height:58vh}}
+.reset-list-button{margin-top:12px;width:100%;border:1px solid #e3d6c8;border-radius:6px;background:transparent;color:var(--red);font-size:12px;font-weight:700;padding:10px 12px}.reset-list-button:hover{background:#f6e9e1}
+@media(max-width:980px){.reset-list-button{font-size:14px;min-height:44px}}

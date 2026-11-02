@@ -80,7 +80,7 @@ function render(){
   const menuItems=getMenuItems();const list=getShopping();$('#menu-count').textContent=menuItems.reduce((sum,item)=>sum+item.quantity,0);$('#planned-menu-list').innerHTML=menuItems.map(item=>`<div class="shopping-menu-item"><span>${escapeHtml(item.name)} <small>${item.kind==='pizza'?'Pizza':'Preparazione'}</small></span><strong>× ${item.quantity}</strong></div>`).join('')||'<div class="shopping-menu-empty">Nessuna pizza o preparazione selezionata.</div>';
   $('#shopping-count').textContent=list.length;$('#shopping-total').innerHTML=`${list.length} <small>${list.length===1?'voce':'voci'}</small>`;
   $('#shopping-empty').hidden=list.length>0;$('#shopping-list').innerHTML=list.map(item=>`<label class="shopping-item ${state.checked.includes(item.id)?'checked':''}"><input class="shopping-check" type="checkbox" data-check="${escapeHtml(item.id)}" ${state.checked.includes(item.id)?'checked':''} aria-label="Segna ${escapeHtml(item.name)} come preso" /><span class="shopping-name">${escapeHtml(item.name)}</span><span class="shopping-qty">${quantityLabel(item)}</span></label>`).join('');
-  $('#copy-list-btn').disabled=list.length===0&&menuItems.length===0;const menuTotal=menuItems.reduce((sum,item)=>sum+item.quantity,0);$('#shop-bar-summary').textContent=`${menuTotal} nel menu · ${list.length} ${list.length===1?'ingrediente':'ingredienti'}`;
+  $('#copy-list-btn').disabled=list.length===0&&menuItems.length===0;const menuTotal=menuItems.reduce((sum,item)=>sum+item.quantity,0);const resetButton=$('#reset-list-btn');resetButton.hidden=!state.activeEventId&&!menuItems.length;resetButton.textContent=state.activeEventId?'Chiudi la serata e azzera la lista':'Azzera la lista';$('#shop-bar-summary').textContent=`${menuTotal} nel menu · ${list.length} ${list.length===1?'ingrediente':'ingredienti'}`;
   renderSavedEvents();
 }
 function currentMenu(){return state.pizzas.filter(pizza=>pizza.count>0).map(pizza=>({pizza_id:pizza.id,quantity:pizza.count}));}
@@ -134,9 +134,9 @@ function openSavedEvent(eventId){
   const specialQuantities=new Map((event.special_menu||[]).map(item=>[item.special_id,Number(item.quantity)||0]));state.specials.forEach(item=>item.count=specialQuantities.get(item.id)||0);
   save();showToast('Serata caricata nel menu.');
 }
-function startNewEvent(){
+function startNewEvent(message='Nuova serata pronta da organizzare.'){
   state.activeEventId=null;state.eventDate='';state.guests=4;state.eventNotes='';state.doughWeight=null;state.hydration=null;state.ballCount=null;state.ballWeight=null;state.maturationHours=null;state.checked=[];state.pizzas.forEach(pizza=>pizza.count=0);state.specials.forEach(item=>item.count=0);
-  saveLocal();showToast('Nuova serata pronta da organizzare.');
+  saveLocal();showToast(message);
 }
 async function deleteSavedEvent(eventId){
   const event=state.events.find(item=>item.id===eventId);if(!event)return;
@@ -367,6 +367,7 @@ document.addEventListener('click',event=>{
   if(event.target.closest('#calendar-clear')){state.eventDate='';save();$('#calendar-dialog').close();return;}
   if(event.target.closest('#save-event-btn')){saveCurrentEvent();return;}
   if(event.target.closest('#new-event-btn')){startNewEvent();return;}
+  if(event.target.closest('#reset-list-btn')){if(state.activeEventId){startNewEvent('Lista azzerata. La serata resta salvata.');}else if(confirm('Svuotare la lista? Le pizze scelte non sono ancora salvate in una serata.')){startNewEvent('Lista azzerata.');}return;}
   const deleteEvent=event.target.closest('[data-delete-event]');if(deleteEvent){deleteSavedEvent(deleteEvent.dataset.deleteEvent);return;}
   const shopEvent=event.target.closest('[data-shop-event]');if(shopEvent){openEventShopping(shopEvent.dataset.shopEvent);return;}
   const openEvent=event.target.closest('[data-open-event]');if(openEvent){showSavedEvent(openEvent.dataset.openEvent);return;}

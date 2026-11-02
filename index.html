@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20261102-spesa-serata2" />
+    <link rel="stylesheet" href="styles.css?v=20261102-azzera-lista" />
   </head>
   <body>
     <section class="auth-screen" id="auth-screen">
@@ -107,6 +107,7 @@
       <aside class="shopping-panel">
         <div class="shop-top"><div><span class="section-kicker">PRONTI PER LA SPESA?</span><h2>La lista<span class="period">.</span></h2></div><span class="bag-icon">♧</span><button type="button" class="shop-close" id="shop-close" aria-label="Chiudi la lista">×</button></div>
         <div class="shop-event"><span class="calendar-icon">▦</span><div><strong id="shop-date">La tua prossima serata</strong><small id="shop-guests">4 persone a tavola</small></div></div>
+        <button type="button" class="reset-list-button" id="reset-list-btn" hidden>Azzera la lista</button>
         <div class="shopping-divider menu-divider"><span>PIZZE E PREPARAZIONI</span><span id="menu-count">0</span></div>
         <div class="shopping-menu-list" id="planned-menu-list"></div>
         <div class="shopping-divider"><span>INGREDIENTI</span><span id="shopping-count">0</span></div>
@@ -134,6 +135,6 @@
     <div id="toast" class="toast" role="status"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0"></script>
     <script src="supabase-config.js"></script>
-    <script src="app.js?v=20261102-spesa-serata2"></script>
+    <script src="app.js?v=20261102-azzera-lista"></script>
   </body>
 </html>
