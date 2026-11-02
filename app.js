@@ -64,19 +64,19 @@ function render(){
   const homeQuery=$('#pizza-search').value.trim().toLocaleLowerCase('it');
   const selectedType=({rosse:'rossa',bianche:'bianca'})[currentFilter];
   const homePizzas=state.pizzas.filter(p=> (!selectedType||p.type===selectedType)&&p.name.toLocaleLowerCase('it').includes(homeQuery)).sort((a,b)=>a.name.localeCompare(b.name,'it',{sensitivity:'base'}));
-  $('#pizza-grid').innerHTML=homePizzas.length?homePizzas.map(p=>pizzaCard(p,true)).join():'<div class="empty-filter">Nessuna pizza trovata con questi filtri.</div>';
-  $('#special-order-grid').innerHTML=state.specials.map(special=>specialCard(special,true)).join()||'<div class="empty-filter">Aggiungi una preparazione in “Le speciali” per inserirla nella serata.</div>';
+  $('#pizza-grid').innerHTML=homePizzas.length?homePizzas.map(p=>pizzaCard(p,true)).join(''):'<div class="empty-filter">Nessuna pizza trovata con questi filtri.</div>';
+  $('#special-order-grid').innerHTML=state.specials.map(special=>specialCard(special,true)).join('')||'<div class="empty-filter">Aggiungi una preparazione in “Le speciali” per inserirla nella serata.</div>';
   const catalogQuery=$('#catalog-search').value.trim().toLocaleLowerCase('it');const catalogPizzas=state.pizzas.filter(p=>p.name.toLocaleLowerCase('it').includes(catalogQuery));
-  $('#catalog-grid').innerHTML=catalogPizzas.length?catalogPizzas.map(p=>pizzaCard(p,false)).join():'<div class="empty-catalog"><strong>Il ricettario ti aspetta.</strong><p>Aggiungi la tua prima pizza e componi un menu tutto tuo.</p><button class="primary-button" id="empty-new-pizza">＋ Aggiungi una pizza</button></div>';
+  $('#catalog-grid').innerHTML=catalogPizzas.length?catalogPizzas.map(p=>pizzaCard(p,false)).join(''):'<div class="empty-catalog"><strong>Il ricettario ti aspetta.</strong><p>Aggiungi la tua prima pizza e componi un menu tutto tuo.</p><button class="primary-button" id="empty-new-pizza">＋ Aggiungi una pizza</button></div>';
   $('#catalog-summary').textContent=`${state.pizzas.length} ${state.pizzas.length===1?'ricetta':'ricette'} nel ricettario`;
   const specialQuery=$('#special-search').value.trim().toLocaleLowerCase('it');const visibleSpecials=state.specials.filter(item=>item.name.toLocaleLowerCase('it').includes(specialQuery));
-  $('#special-grid').innerHTML=visibleSpecials.length?visibleSpecials.map(item=>specialCard(item,false)).join():'<div class="empty-catalog"><strong>Le tue speciali ti aspettano.</strong><p>Aggiungi una preparazione e collegala agli ingredienti della dispensa.</p><button class="primary-button" id="empty-new-special">＋ Aggiungi una speciale</button></div>';
+  $('#special-grid').innerHTML=visibleSpecials.length?visibleSpecials.map(item=>specialCard(item,false)).join(''):'<div class="empty-catalog"><strong>Le tue speciali ti aspettano.</strong><p>Aggiungi una preparazione e collegala agli ingredienti della dispensa.</p><button class="primary-button" id="empty-new-special">＋ Aggiungi una speciale</button></div>';
   $('#special-summary').textContent=`${state.specials.length} ${state.specials.length===1?'preparazione':'preparazioni'} nel ricettario`;
   $('#ingredient-list').innerHTML=state.ingredients.map(item=>`<div class="ingredient-row"><span class="ingredient-symbol">✳</span><div class="ingredient-detail"><strong>${escapeHtml(item.name)}</strong><small>Unità di misura · ${labelUnit(item.unit)}</small></div><button class="edit-ingredient" data-edit-ingredient="${escapeHtml(item.id)}" aria-label="Modifica ${escapeHtml(item.name)}" title="Modifica ingrediente">✎</button><button class="delete-ingredient" data-delete-ingredient="${escapeHtml(item.id)}" title="Rimuovi ${escapeHtml(item.name)}" aria-label="Rimuovi ${escapeHtml(item.name)}">×</button></div>`).join('')||'<div class="empty-catalog"><strong>La dispensa è vuota.</strong><p>Aggiungi gli ingredienti che ami usare.</p></div>';
   const menuItems=getMenuItems();const list=getShopping();$('#menu-count').textContent=menuItems.reduce((sum,item)=>sum+item.quantity,0);$('#planned-menu-list').innerHTML=menuItems.map(item=>`<div class="shopping-menu-item"><span>${escapeHtml(item.name)} <small>${item.kind==='pizza'?'Pizza':'Preparazione'}</small></span><strong>× ${item.quantity}</strong></div>`).join('')||'<div class="shopping-menu-empty">Nessuna pizza o preparazione selezionata.</div>';
   $('#shopping-count').textContent=list.length;$('#shopping-total').innerHTML=`${list.length} <small>${list.length===1?'voce':'voci'}</small>`;
-  $('#shopping-empty').hidden=list.length>0;$('#shopping-list').innerHTML=list.map(item=>`<div class="shopping-item ${state.checked.includes(item.id)?'checked':''}"><input class="shopping-check" type="checkbox" data-check="${escapeHtml(item.id)}" ${state.checked.includes(item.id)?'checked':''} aria-label="Segna ${escapeHtml(item.name)} come preso" /><label>${escapeHtml(item.name)}</label><span class="shopping-qty">${quantityLabel(item)}</span></div>`).join('');
-  $('#copy-list-btn').disabled=list.length===0&&menuItems.length===0;
+  $('#shopping-empty').hidden=list.length>0;$('#shopping-list').innerHTML=list.map(item=>`<label class="shopping-item ${state.checked.includes(item.id)?'checked':''}"><input class="shopping-check" type="checkbox" data-check="${escapeHtml(item.id)}" ${state.checked.includes(item.id)?'checked':''} aria-label="Segna ${escapeHtml(item.name)} come preso" /><span class="shopping-name">${escapeHtml(item.name)}</span><span class="shopping-qty">${quantityLabel(item)}</span></label>`).join('');
+  $('#copy-list-btn').disabled=list.length===0&&menuItems.length===0;const menuTotal=menuItems.reduce((sum,item)=>sum+item.quantity,0);$('#shop-bar-summary').textContent=`${menuTotal} nel menu · ${list.length} ${list.length===1?'ingrediente':'ingredienti'}`;
   renderSavedEvents();
 }
 function currentMenu(){return state.pizzas.filter(pizza=>pizza.count>0).map(pizza=>({pizza_id:pizza.id,quantity:pizza.count}));}
@@ -170,6 +170,8 @@ async function saveCurrentEvent(){
   catch(error){console.error('Forno di casa save event:',error);if(currentUser?.id===userId){setCloudStatus('Salvataggio non riuscito');showToast('Non riesco a salvare la serata. Riprova tra poco.');}}
   finally{button.disabled=false;render();}
 }
+function toggleShoppingSheet(open){document.body.classList.toggle('shop-open',open);$('#shop-bar').setAttribute('aria-expanded',String(open));if(open)$('#shop-close').focus();}
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&document.body.classList.contains('shop-open'))toggleShoppingSheet(false);});
 function showToast(message){const toast=$('#toast');toast.textContent=message;toast.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove('show'),2200);}
 function navigate(view){$$('.view').forEach(el=>el.classList.toggle('active',el.id===`view-${view}`));$$('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.view===view));$('#crumb-current').textContent=({serata:'LA SERATA',pizze:'LE PIZZE',speciali:'LE SPECIALI',ingredienti:'INGREDIENTI'})[view];window.scrollTo({top:0,behavior:'smooth'});}
 function openPizzaDialog(pizzaId=null){
@@ -334,6 +336,8 @@ async function initializeCloud(){
 }
 
 document.addEventListener('click',event=>{
+  if(event.target.closest('#shop-bar')){toggleShoppingSheet(true);return;}
+  if(event.target.closest('#shop-close')){toggleShoppingSheet(false);return;}
   const nav=event.target.closest('[data-view]');if(nav){navigate(nav.dataset.view);return;}
   const go=event.target.closest('[data-go]');if(go){navigate(go.dataset.go);return;}
   if(event.target.closest('#calendar-trigger')){openCalendar();return;}

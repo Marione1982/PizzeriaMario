@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20261102-comanda-ordine" />
+    <link rel="stylesheet" href="styles.css?v=20261102-layout-mobile" />
   </head>
   <body>
     <section class="auth-screen" id="auth-screen">
@@ -105,7 +105,7 @@
       </main>
 
       <aside class="shopping-panel">
-        <div class="shop-top"><div><span class="section-kicker">PRONTI PER LA SPESA?</span><h2>La lista<span class="period">.</span></h2></div><span class="bag-icon">♧</span></div>
+        <div class="shop-top"><div><span class="section-kicker">PRONTI PER LA SPESA?</span><h2>La lista<span class="period">.</span></h2></div><span class="bag-icon">♧</span><button type="button" class="shop-close" id="shop-close" aria-label="Chiudi la lista">×</button></div>
         <div class="shop-event"><span class="calendar-icon">▦</span><div><strong id="shop-date">La tua prossima serata</strong><small id="shop-guests">4 persone a tavola</small></div></div>
         <div class="shopping-divider menu-divider"><span>PIZZE E PREPARAZIONI</span><span id="menu-count">0</span></div>
         <div class="shopping-menu-list" id="planned-menu-list"></div>
@@ -114,6 +114,7 @@
         <div class="shopping-empty" id="shopping-empty"><span>✳</span><strong>Il forno è pronto.</strong><p>Gli ingredienti delle pizze e delle preparazioni selezionate appariranno qui.</p></div>
         <div class="shopping-bottom"><div class="shopping-total"><span>INGREDIENTI DA PRENDERE</span><strong id="shopping-total">0 <small>voci</small></strong></div><button class="shopping-button" id="copy-list-btn" disabled><span>↗</span> Lista della spesa</button><p class="privacy-note"><span>◈</span> La tua lista resta privata nel tuo ricettario.</p></div>
       </aside>
+      <button type="button" class="shop-bar" id="shop-bar" aria-expanded="false" aria-label="Apri la lista della spesa"><span class="shop-bar-icon">♧</span><span class="shop-bar-text"><strong>La lista della spesa</strong><small id="shop-bar-summary">0 nel menu · 0 ingredienti</small></span><span class="shop-bar-arrow">↑</span></button>
     </div>
 
 <dialog id="calendar-dialog" class="modal calendar-modal"><div class="modal-top"><div><span class="section-kicker">ORGANIZZIAMO</span><h2>Scegli la data<span class="period">.</span></h2></div><button type="button" class="close-button" data-close>×</button></div><div class="calendar-monthbar"><button type="button" id="calendar-prev" aria-label="Mese precedente">‹</button><strong id="calendar-month"></strong><button type="button" id="calendar-next" aria-label="Mese successivo">›</button></div><div class="calendar-weekdays" aria-hidden="true"><span>L</span><span>M</span><span>M</span><span>G</span><span>V</span><span>S</span><span>D</span></div><div class="calendar-days" id="calendar-days"></div><button type="button" id="calendar-clear" class="calendar-clear">Rimuovi la data</button></dialog>
@@ -133,6 +134,6 @@
     <div id="toast" class="toast" role="status"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0"></script>
     <script src="supabase-config.js"></script>
-    <script src="app.js?v=20261102-comanda-ordine"></script>
+    <script src="app.js?v=20261102-layout-mobile"></script>
   </body>
 </html>
