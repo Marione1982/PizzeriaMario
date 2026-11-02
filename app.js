@@ -20,7 +20,7 @@ const seed = {
 };
 let state;
 try { state = JSON.parse(localStorage.getItem(STORAGE_KEY)) || structuredClone(seed); } catch { state = structuredClone(seed); }
-state.pizzas ||= []; state.specials ||= []; state.ingredients ||= []; state.checked ||= []; state.events ||= []; state.activeEventId ||= null;
+state.pizzas ||= []; state.specials ||= []; state.ingredients ||= []; state.checked ||= []; state.events ||= []; state.activeEventId ||= null; state.eventNotes ||= ''; state.doughWeight ??= null; state.hydration ??= null; state.ballCount ??= null; state.ballWeight ??= null; state.maturationHours ??= null;
 let currentFilter = 'tutte'; let toastTimer; let editingPizzaId=null; let editingSpecialId=null; let editingIngredientId=null; let calendarViewDate=new Date(); let authMode='signin';
 let supabaseClient = null; let currentUser = null; let loadedUserId = null; let cloudSyncTimer; let realtimeReloadTimer; let realtimeChannel = null; let cloudSyncChain = Promise.resolve();
 const $ = (selector, root=document) => root.querySelector(selector);
@@ -56,7 +56,7 @@ function specialCard(special,showQuantity=false){
   return `<article class="pizza-card special-card"><div class="card-top"><div><h3 class="pizza-name">${escapeHtml(special.name)}</h3><span class="special-kind">PREPARAZIONE</span></div>${actions}</div><p class="pizza-ingredients">${names.length?names.map(escapeHtml).join(' · '):'Nessun ingrediente selezionato'}</p>${special.notes?`<p class="pizza-notes"><strong>Note:</strong> ${escapeHtml(special.notes)}</p>`:''}<div class="card-bottom"><span class="portion-label">${showQuantity?'NEL MENU':'PREPARAZIONE'}</span>${showQuantity?`<div class="quantity-control"><button aria-label="Riduci ${escapeHtml(special.name)}" data-special-quantity="${escapeHtml(special.id)}" data-step="-1">−</button><span class="quantity">${special.count}</span><button aria-label="Aggiungi ${escapeHtml(special.name)}" data-special-quantity="${escapeHtml(special.id)}" data-step="1">+</button></div>`:`<span class="portion-label">${names.length} ${names.length===1?'ingrediente':'ingredienti'}</span>`}</div></article>`;
 }
 function render(){
-  $('#event-date').value=state.eventDate||'';$('#event-date-label').textContent=state.eventDate?formatDate(state.eventDate):'Seleziona una data';$('#guests').value=state.guests||4;
+  $('#event-date').value=state.eventDate||'';$('#event-date-label').textContent=state.eventDate?formatDate(state.eventDate):'Seleziona una data';$('#guests').value=state.guests||4;$('#event-notes').value=state.eventNotes||'';$('#event-dough-weight').value=state.doughWeight??'';$('#event-hydration').value=state.hydration??'';$('#event-ball-count').value=state.ballCount??'';$('#event-ball-weight').value=state.ballWeight??'';$('#event-maturation-hours').value=state.maturationHours??'';
   $('#pizza-count').textContent=state.pizzas.length;$('#all-count').textContent=state.pizzas.length;$('#special-count').textContent=state.specials.length;
   $('#shop-date').textContent=formatDate(state.eventDate);$('#shop-guests').textContent=`${state.guests||4} ${(state.guests||4)===1?'persona':'persone'} a tavola`;
   const homeQuery=$('#pizza-search').value.trim().toLocaleLowerCase('it');
@@ -81,7 +81,7 @@ function currentMenu(){return state.pizzas.filter(pizza=>pizza.count>0).map(pizz
 function currentSpecialMenu(){return state.specials.filter(item=>item.count>0).map(item=>({special_id:item.id,quantity:item.count}));}
 function captureActiveEvent(){
   if(!state.activeEventId)return;
-  const event={id:state.activeEventId,event_date:state.eventDate||null,guest_count:Number(state.guests)||4,checked_ingredients:[...state.checked],menu:currentMenu(),special_menu:currentSpecialMenu(),updated_at:new Date().toISOString()};
+  const event={id:state.activeEventId,event_date:state.eventDate||null,guest_count:Number(state.guests)||4,event_notes:state.eventNotes||'',dough_weight_g:state.doughWeight===''||state.doughWeight==null?null:Number(state.doughWeight),hydration_percent:state.hydration===''||state.hydration==null?null:Number(state.hydration),ball_count:state.ballCount===''||state.ballCount==null?null:Number(state.ballCount),ball_weight_g:state.ballWeight===''||state.ballWeight==null?null:Number(state.ballWeight),maturation_hours:state.maturationHours===''||state.maturationHours==null?null:Number(state.maturationHours),checked_ingredients:[...state.checked],menu:currentMenu(),special_menu:currentSpecialMenu(),updated_at:new Date().toISOString()};
   const index=state.events.findIndex(item=>item.id===event.id);
   if(index>=0)state.events[index]=event;else state.events.push(event);
 }
@@ -98,14 +98,14 @@ function renderSavedEvents(){
 }
 function openSavedEvent(eventId){
   const event=state.events.find(item=>item.id===eventId);if(!event)return;
-  state.activeEventId=event.id;state.eventDate=event.event_date||'';state.guests=Number(event.guest_count)||4;state.checked=[...(event.checked_ingredients||[])];
+  state.activeEventId=event.id;state.eventDate=event.event_date||'';state.guests=Number(event.guest_count)||4;state.eventNotes=event.event_notes||'';state.doughWeight=event.dough_weight_g??null;state.hydration=event.hydration_percent??null;state.ballCount=event.ball_count??null;state.ballWeight=event.ball_weight_g??null;state.maturationHours=event.maturation_hours??null;state.checked=[...(event.checked_ingredients||[])];
   const quantities=new Map((event.menu||[]).map(item=>[item.pizza_id,Number(item.quantity)||0]));
   state.pizzas.forEach(pizza=>pizza.count=quantities.get(pizza.id)||0);
   const specialQuantities=new Map((event.special_menu||[]).map(item=>[item.special_id,Number(item.quantity)||0]));state.specials.forEach(item=>item.count=specialQuantities.get(item.id)||0);
   save();showToast('Serata caricata nel menu.');
 }
 function startNewEvent(){
-  state.activeEventId=null;state.eventDate='';state.guests=4;state.checked=[];state.pizzas.forEach(pizza=>pizza.count=0);state.specials.forEach(item=>item.count=0);
+  state.activeEventId=null;state.eventDate='';state.guests=4;state.eventNotes='';state.doughWeight=null;state.hydration=null;state.ballCount=null;state.ballWeight=null;state.maturationHours=null;state.checked=[];state.pizzas.forEach(pizza=>pizza.count=0);state.specials.forEach(item=>item.count=0);
   saveLocal();showToast('Nuova serata pronta da organizzare.');
 }
 async function deleteSavedEvent(eventId){
@@ -121,7 +121,7 @@ async function deleteSavedEvent(eventId){
   try{
     await cloudSyncChain;
     state.events=state.events.filter(item=>item.id!==eventId);
-    if(state.activeEventId===eventId){state.activeEventId=null;state.eventDate='';state.guests=4;state.checked=[];state.pizzas.forEach(pizza=>pizza.count=0);state.specials.forEach(item=>item.count=0);}
+    if(state.activeEventId===eventId){state.activeEventId=null;state.eventDate='';state.guests=4;state.eventNotes='';state.doughWeight=null;state.hydration=null;state.ballCount=null;state.ballWeight=null;state.maturationHours=null;state.checked=[];state.pizzas.forEach(pizza=>pizza.count=0);state.specials.forEach(item=>item.count=0);}
     saveLocal();if(currentUser?.id===userId)setCloudStatus('Sincronizzato su Supabase');
     showToast('Serata eliminata.');
   }catch(error){
@@ -212,7 +212,7 @@ async function loadCloudState(user){
     supabaseClient.from('ingredients').select('id,name,unit').eq('user_id',user.id).order('name'),
     supabaseClient.from('pizzas').select('id,name,type,notes').eq('user_id',user.id).order('name'),
     supabaseClient.from('pizza_ingredients').select('pizza_id,ingredient_id,quantity_per_pizza').eq('user_id',user.id),
-    supabaseClient.from('pizza_events').select('id,event_date,guest_count,checked_ingredients,updated_at').eq('user_id',user.id),
+    supabaseClient.from('pizza_events').select('id,event_date,guest_count,event_notes,dough_weight_g,hydration_percent,ball_count,ball_weight_g,maturation_hours,checked_ingredients,updated_at').eq('user_id',user.id),
     supabaseClient.from('event_pizzas').select('event_id,pizza_id,quantity').eq('user_id',user.id),
     supabaseClient.from('specials').select('id,name,notes').eq('user_id',user.id).order('name'),
     supabaseClient.from('special_ingredients').select('special_id,ingredient_id,quantity_per_preparation').eq('user_id',user.id),
@@ -226,7 +226,7 @@ async function loadCloudState(user){
   const active=events.find(event=>event.id===previousActiveId)||events[0]||null;
   const quantities=new Map((active?.menu||[]).map(item=>[item.pizza_id,item.quantity]));
   const localQuantities=new Map(local.pizzas.map(pizza=>[pizza.id,pizza.count||0]));const localSpecialQuantities=new Map((local.specials||[]).map(item=>[item.id,item.count||0]));
-  state={events,activeEventId:active?.id||null,eventDate:active?.event_date||(!events.length?(local.eventDate||''):''),guests:active?.guest_count||(!events.length?(local.guests||4):4),
+  state={events,activeEventId:active?.id||null,eventDate:active?.event_date||(!events.length?(local.eventDate||''):''),guests:active?.guest_count||(!events.length?(local.guests||4):4),eventNotes:active?.event_notes??(!events.length?(local.eventNotes||''):''),doughWeight:active?.dough_weight_g??(!events.length?(local.doughWeight??null):null),hydration:active?.hydration_percent??(!events.length?(local.hydration??null):null),ballCount:active?.ball_count??(!events.length?(local.ballCount??null):null),ballWeight:active?.ball_weight_g??(!events.length?(local.ballWeight??null):null),maturationHours:active?.maturation_hours??(!events.length?(local.maturationHours??null):null),
     ingredients:ingredients.map(item=>({id:item.id,name:item.name,unit:'pz'})),
     pizzas:pizzas.map(pizza=>({id:pizza.id,name:pizza.name,type:pizza.type,notes:pizza.notes||'',count:active?(quantities.get(pizza.id)||0):(localQuantities.get(pizza.id)||0),ingredients:links.filter(link=>link.pizza_id===pizza.id).map(link=>link.ingredient_id)})),
     specials:specials.map(item=>({id:item.id,name:item.name,notes:item.notes||'',count:active?(new Map((active.special_menu||[]).map(row=>[row.special_id,row.quantity])).get(item.id)||0):(localSpecialQuantities.get(item.id)||0),ingredients:specialLinks.filter(link=>link.special_id===item.id).map(link=>link.ingredient_id)})),
@@ -237,7 +237,7 @@ async function persistActiveEvent(userId){
   if(!state.activeEventId)return;
   captureActiveEvent();
   const active=state.events.find(item=>item.id===state.activeEventId);if(!active)return;
-  const saved=requireCloud(await supabaseClient.from('pizza_events').upsert({id:active.id,user_id:userId,event_date:active.event_date,guest_count:active.guest_count,checked_ingredients:active.checked_ingredients,updated_at:new Date().toISOString()},{onConflict:'user_id,id'}).select('id').single());
+  const saved=requireCloud(await supabaseClient.from('pizza_events').upsert({id:active.id,user_id:userId,event_date:active.event_date,guest_count:active.guest_count,event_notes:active.event_notes,dough_weight_g:active.dough_weight_g,hydration_percent:active.hydration_percent,ball_count:active.ball_count,ball_weight_g:active.ball_weight_g,maturation_hours:active.maturation_hours,checked_ingredients:active.checked_ingredients,updated_at:new Date().toISOString()},{onConflict:'user_id,id'}).select('id').single());
   requireCloud(await supabaseClient.from('event_pizzas').delete().eq('user_id',userId).eq('event_id',saved.id));
   const menu=active.menu.filter(item=>item.quantity>0).map(item=>({user_id:userId,event_id:saved.id,pizza_id:item.pizza_id,quantity:item.quantity}));
   if(menu.length)requireCloud(await supabaseClient.from('event_pizzas').insert(menu));
@@ -338,6 +338,8 @@ document.addEventListener('click',event=>{
 document.addEventListener('change',event=>{
   if(event.target.id==='event-date'){state.eventDate=event.target.value;save();}
   if(event.target.id==='guests'){state.guests=Math.max(1,Math.min(99,Number(event.target.value)||1));save();}
+  const eventFields={'event-notes':'eventNotes','event-dough-weight':'doughWeight','event-hydration':'hydration','event-ball-count':'ballCount','event-ball-weight':'ballWeight','event-maturation-hours':'maturationHours'};
+  if(eventFields[event.target.id]){const field=eventFields[event.target.id];state[field]=event.target.value===''?(field==='eventNotes'?'':null):(field==='eventNotes'?event.target.value:Number(event.target.value));save();}
   if(event.target.matches('[data-check]')){const id=event.target.dataset.check;state.checked=event.target.checked?[...new Set([...state.checked,id])]:state.checked.filter(value=>value!==id);save();}
 });
 $('#pizza-filters').addEventListener('click',event=>{const chip=event.target.closest('[data-filter]');if(!chip)return;currentFilter=chip.dataset.filter;$$('.filter-chip').forEach(item=>item.classList.toggle('selected',item===chip));render();});
